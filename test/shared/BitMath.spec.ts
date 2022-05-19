@@ -1,0 +1,77 @@
+import { waffle } from 'hardhat'
+import { expect } from 'chai'
+import { Contract, BigNumber } from 'ethers'
+
+import BitMathTest from '../../artifacts/contracts/shared/test/BitMathTest.sol/BitMathTest.json'
+
+const { deployContract } = waffle
+
+describe('BitMath', () => {
+  const provider = waffle.provider
+  const [wallet] = provider.getWallets()
+
+  let bitMath: Contract
+  before('deploy BitMathTest', async () => {
+    bitMath = await deployContract(wallet, BitMathTest)
+  })
+
+  describe('#mostSignificantBit', () => {
+    it('0', async () => {
+      await expect(bitMath.mostSignificantBit(0)).to.be.revertedWith('BitMath::mostSignificantBit: zero')
+    })
+    it('1', async () => {
+      expect(await bitMath.mostSignificantBit(1)).to.eq(0)
+    })
+    it('2', async () => {
+      expect(await bitMath.mostSignificantBit(2)).to.eq(1)
+    })
+    it('all powers of 2', async () => {
+      const results = await Promise.all(
+        [...Array(255)].map((_, i) => bitMath.mostSignificantBit(BigNumber.from(2).pow(i)))
+      )
+      expect(results).to.deep.eq([...Array(255)].map((_, i) => i))
+    })
+    it('uint256(-1)', async () => {
+      expect(await bitMath.mostSignificantBit(BigNumber.from(2).pow(256).sub(1))).to.eq(255)
+    })
+    it('gas cost of smaller number', async () => {
+      expect(await bitMath.getGasCostOfMostSignificantBit(BigNumber.from(3568))).to.eq(296)
+    })
+    it('gas cost of max uint128', async () => {
+      expect(await bitMath.getGasCostOfMostSignificantBit(BigNumber.from(2).pow(128).sub(1))).to.eq(368)
+    })
+    it('gas cost of max uint256', async () => {
+      expect(await bitMath.getGasCostOfMostSignificantBit(BigNumber.from(2).pow(256).sub(1))).to.eq(386)
+    })
+  })
+
+  describe('#leastSignificantBit', () => {
+    it('0', async () => {
+      await expect(bitMath.leastSignificantBit(0)).to.be.revertedWith('BitMath::leastSignificantBit: zero')
+    })
+    it('1', async () => {
+      expect(await bitMath.leastSignificantBit(1)).to.eq(0)
+    })
+    it('2', async () => {
+      expect(await bitMath.leastSignificantBit(2)).to.eq(1)
+    })
+    it('all powers of 2', async () => {
+      const results = await Promise.all(
+        [...Array(255)].map((_, i) => bitMath.leastSignificantBit(BigNumber.from(2).pow(i)))
+      )
+      expect(results).to.deep.eq([...Array(255)].map((_, i) => i))
+    })
+    it('uint256(-1)', async () => {
+      expect(await bitMath.leastSignificantBit(BigNumber.from(2).pow(256).sub(1))).to.eq(0)
+    })
+    it('gas cost of smaller number', async () => {
+      expect(await bitMath.getGasCostOfLeastSignificantBit(BigNumber.from(3568))).to.eq(408)
+    })
+    it('gas cost of max uint128', async () => {
+      expect(await bitMath.getGasCostOfLeastSignificantBit(BigNumber.from(2).pow(128).sub(1))).to.eq(407)
+    })
+    it('gas cost of max uint256', async () => {
+      expect(await bitMath.getGasCostOfLeastSignificantBit(BigNumber.from(2).pow(256).sub(1))).to.eq(407)
+    })
+  })
+})
