@@ -6,7 +6,6 @@ import { expandTo18Decimals } from './utilities'
 import ERC20Test from '../../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
 import FAssetTest from '../../../artifacts/contracts/core/test/FAssetTest.sol/FAssetTest.json'
 import WNAT from '../../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
-import BlazeSwapMath from '../../../artifacts/contracts/core/BlazeSwapMath.sol/BlazeSwapMath.json'
 import BlazeSwapBaseManager from '../../../artifacts/contracts/core/BlazeSwapBaseManager.sol/BlazeSwapBaseManager.json'
 import BlazeSwapManager from '../../../artifacts/contracts/core/BlazeSwapManager.sol/BlazeSwapManager.json'
 import BlazeSwapBaseFactory from '../../../artifacts/contracts/core/BlazeSwapBaseFactory.sol/BlazeSwapBaseFactory.json'
@@ -51,31 +50,26 @@ interface BaseManagerFixture {
 interface ManagerFixture {
   manager: IBlazeSwapManager
   wNat: IWNat
+  priceSubmitter: IPriceSubmitter
 }
 
 export async function baseManagerFixture([wallet]: Wallet[], _: providers.Web3Provider): Promise<BaseManagerFixture> {
-  const math = await deployContract(wallet, BlazeSwapMath)
-  const manager = (await deployContract(wallet, BlazeSwapBaseManager, [
-    wallet.address,
-    math.address,
-  ])) as IBlazeSwapBaseManager
+  const manager = (await deployContract(wallet, BlazeSwapBaseManager, [wallet.address])) as IBlazeSwapBaseManager
   return { manager }
 }
 
-export async function managerFixture([wallet]: Wallet[], _: providers.Web3Provider): Promise<ManagerFixture> {
-  const math = await deployContract(wallet, BlazeSwapMath)
+export async function managerFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<ManagerFixture> {
   const wNat = (await deployContract(wallet, WNAT)) as IWNat
-  const manager = (await deployContract(wallet, BlazeSwapManager, [
-    wallet.address,
-    math.address,
-    wNat.address,
-  ])) as IBlazeSwapManager
+  await provider.send('hardhat_setCode', [PRICE_SUBMITTER, PriceSubmitter.deployedBytecode])
+  const priceSubmitter = PriceSubmitter__factory.connect(PRICE_SUBMITTER, wallet)
+  await priceSubmitter.initialize(wNat.address)
+  const manager = (await deployContract(wallet, BlazeSwapManager, [wallet.address])) as IBlazeSwapManager
   const delegationPlugin = await deployContract(wallet, BlazeSwapDelegationPlugin, [manager.address])
   await delegationPlugin.setInitialProvider(TEST_PROVIDERS[0])
   await manager.setDelegationPlugin(delegationPlugin.address)
   const ftsoRewardPlugin = await deployContract(wallet, BlazeSwapFtsoRewardPlugin)
   await manager.setFtsoRewardPlugin(ftsoRewardPlugin.address)
-  return { manager, wNat }
+  return { manager, wNat, priceSubmitter }
 }
 
 interface BaseFactoryFixture extends BaseManagerFixture {
@@ -100,9 +94,7 @@ export async function baseFactoryFixture(
 
 export async function factoryFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<FactoryFixture> {
   await provider.send('hardhat_setCode', [PRICE_SUBMITTER, PriceSubmitter.deployedBytecode])
-  const { manager, wNat } = await managerFixture([wallet], provider)
-  const priceSubmitter = PriceSubmitter__factory.connect(PRICE_SUBMITTER, wallet)
-  await priceSubmitter.initialize(wNat.address)
+  const { manager, wNat, priceSubmitter } = await managerFixture([wallet], provider)
   const ftsoManager = FtsoManager__factory.connect(await priceSubmitter.getFtsoManager(), wallet)
   const ftsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
   const factory = (await deployContract(wallet, BlazeSwapFactory, [manager.address])) as IBlazeSwapFactory

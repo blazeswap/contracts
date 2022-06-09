@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity >=0.5.0;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 import '../../shared/interfaces/IConfigurable.sol';
-import './IBlazeSwapMath.sol';
 
 interface IBlazeSwapBaseManager is IConfigurable {
-    function mathContext() external returns (IBlazeSwapMath);
+    function mathContext() external returns (address);
 
     function setTradingFeeTo(address _tradingFeeTo) external;
 

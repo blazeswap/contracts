@@ -69,7 +69,7 @@ describe('BlazeSwapFactory', () => {
   it('createPair:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(5771529)
+    expect(receipt.gasUsed).to.eq(5924893)
   })
 
   it('createPairWithFakeFAsset', async () => {
@@ -95,7 +95,6 @@ describe('BlazeSwapFactory', () => {
     await expect(factory.createPair(tokens[0], tokens[1])).to.be.revertedWith('BlazeSwap: FASSET_UNSUPPORTED')
     await manager.setAllowFAssetPairsWithoutPlugin(true)
     await expect(factory.createPair(tokens[0], tokens[1])).not.to.be.reverted
-    expect(await manager.assetManagerController()).to.eq(controller2.address)
 
     const bytecode = BlazeSwapPair.bytecode
     const create2Address = getCreate2Address(factory.address, tokens as [string, string], bytecode)

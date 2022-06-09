@@ -11,7 +11,10 @@ import './WNAT.sol';
 contract FtsoRewardManager is IFtsoRewardManager {
     IFtsoManager private immutable ftsoManager;
 
+    bool public active;
+
     address public immutable wNat;
+    address public immutable oldFtsoRewardManager;
 
     struct Reward {
         uint256 epochId;
@@ -20,9 +23,11 @@ contract FtsoRewardManager is IFtsoRewardManager {
     }
     mapping(address => Reward[]) private rewards;
 
-    constructor(address _wNat) {
+    constructor(address _wNat, address _oldFtsoRewardManager) {
+        active = true;
         ftsoManager = IFtsoManager(msg.sender);
         wNat = _wNat;
+        oldFtsoRewardManager = _oldFtsoRewardManager;
     }
 
     receive() external payable {}
@@ -88,6 +93,7 @@ contract FtsoRewardManager is IFtsoRewardManager {
         external
         returns (uint256 _rewardAmount)
     {
+        require(active, 'NOT ACTIVE');
         uint256 nextEpochToExpire = ftsoManager.getRewardEpochToExpireNext();
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
         for (uint256 i; i < rewards[msg.sender].length; i++) {
@@ -105,5 +111,9 @@ contract FtsoRewardManager is IFtsoRewardManager {
             require(address(this).balance >= _rewardAmount, 'Insufficient balance');
             TransferHelper.safeTransferNAT(_recipient, _rewardAmount);
         }
+    }
+
+    function deactivate() external {
+        active = false;
     }
 }

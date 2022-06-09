@@ -186,7 +186,7 @@ describe('ExampleSwapToPrice', () => {
         constants.MaxUint256
       )
       const receipt = await tx.wait()
-      expect(receipt.gasUsed).to.eq('163349')
+      expect(receipt.gasUsed).to.eq('163359')
     })
   })
 })

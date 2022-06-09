@@ -5,14 +5,18 @@ import '../interfaces/flare/IFtsoManager.sol';
 import './FtsoRewardManager.sol';
 
 contract FtsoManager is IFtsoManager {
-    address public immutable rewardManager;
+    address public rewardManager;
 
     uint256 private currentRewardEpoch;
     mapping(uint256 => uint256) private rewardEpochVotePowerBlock;
     uint256 private rewardEpochToExpireNext;
 
     constructor(address _wNat) {
-        rewardManager = address(new FtsoRewardManager(_wNat));
+        rewardManager = address(new FtsoRewardManager(_wNat, address(0)));
+    }
+
+    function replaceRewardManager() external {
+        rewardManager = address(new FtsoRewardManager(FtsoRewardManager(payable(rewardManager)).wNat(), rewardManager));
     }
 
     function addRewardEpoch(uint256 _rewardEpoch, uint256 _votePowerBlock) external {

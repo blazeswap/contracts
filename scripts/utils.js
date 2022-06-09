@@ -2,14 +2,6 @@ const hre = require('hardhat')
 
 require('dotenv').config()
 
-const wNatAddress = {
-  coston: '0x1659941d425224408c5679eeef606666c7991a8A',
-}
-
-module.exports.getWNat = function () {
-  return wNatAddress[hre.network.name]
-}
-
 module.exports.getEnvParam = function (suffix) {
   return process.env[`${hre.network.name.toUpperCase()}_${suffix}`]
 }

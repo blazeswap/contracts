@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import '../shared/libraries/TransferHelper.sol';
 import '../shared/ParentRelation.sol';
 import './interfaces/flare/IWNat.sol';
+import './interfaces/IBlazeSwapManager.sol';
 import './libraries/BlazeSwapFlareLibrary.sol';
 import './libraries/Delegator.sol';
 
@@ -11,9 +12,11 @@ contract BlazeSwapRewardManager is ParentRelation {
     using Delegator for IWNat;
 
     IWNat private immutable wNat;
+    IBlazeSwapManager private immutable manager;
 
-    constructor(IWNat _wNat) {
+    constructor(IWNat _wNat, IBlazeSwapManager _manager) {
         wNat = _wNat;
+        manager = _manager;
     }
 
     receive() external payable {}
@@ -23,15 +26,24 @@ contract BlazeSwapRewardManager is ParentRelation {
     }
 
     function claimFtsoRewards(uint256[] calldata epochs) external returns (uint256 amount) {
-        amount = BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager()).claimReward(
-            payable(this),
-            epochs
-        );
+        IFtsoRewardManager[] memory ftsoRewardManagers = manager.getFtsoRewardManagers();
+        for (uint256 i; i < ftsoRewardManagers.length; i++) {
+            try
+                BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager()).claimReward(
+                    payable(this),
+                    epochs
+                )
+            returns (uint256 partialAmount) {
+                amount += partialAmount;
+            } catch {
+                // ignore errors
+            }
+        }
         wrapRewards();
     }
 
     function wrapRewards() public {
-        wNat.depositTo{value: address(this).balance}(address(this));
+        if (address(this).balance > 0) wNat.depositTo{value: address(this).balance}(address(this));
     }
 
     // re-entrancy check in parent

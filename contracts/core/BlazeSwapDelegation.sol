@@ -57,7 +57,7 @@ contract BlazeSwapDelegation is
         l.manager = manager;
         IWNat wNat = IWNat(manager.wNat());
         l.wNat = wNat;
-        l.rewardManager = payable(new BlazeSwapRewardManager(wNat));
+        l.rewardManager = payable(new BlazeSwapRewardManager(wNat, manager));
         changeProviders(l, [IBlazeSwapDelegationPlugin(plugin).initialProvider(), address(0)]);
     }
 

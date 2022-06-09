@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity >=0.5.0;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 interface IBlazeSwapDelegation {
     function voteOf(address liquidityProvider) external view returns (address);
@@ -20,7 +21,7 @@ interface IBlazeSwapDelegation {
 
     function mostVotedProviders() external view returns (address[2] memory);
 
-    function changeProviders(address[2] memory) external;
+    function changeProviders(address[2] memory ftsoProviders) external;
 
     function withdrawRewardFees() external;
 }

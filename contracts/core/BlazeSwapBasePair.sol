@@ -61,7 +61,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
         address _token0,
         address _token1
     ) public onlyParent {
-        mc = IBlazeSwapBaseManager(_manager).mathContext();
+        mc = IBlazeSwapMath(IBlazeSwapBaseManager(_manager).mathContext());
         manager = _manager;
         token0 = _token0;
         token1 = _token1;

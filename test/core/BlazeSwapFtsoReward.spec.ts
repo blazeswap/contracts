@@ -8,7 +8,8 @@ import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from '
 import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import BlazeSwapFtsoReward from '../../artifacts/contracts/core/BlazeSwapFtsoReward.sol/BlazeSwapFtsoReward.json'
 
-import Coder from 'abi-coder'
+import { Coder } from 'abi-coder'
+
 import {
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
@@ -22,6 +23,8 @@ import {
   FtsoRewardManager,
   IIBlazeSwapPluginImpl__factory,
   IWNat,
+  FtsoRewardManager__factory,
+  IBlazeSwapExecutorManager__factory,
 } from '../../typechain-types'
 
 const { createFixtureLoader } = waffle
@@ -98,6 +101,30 @@ describe('BlazeSwapFtsoReward', () => {
     expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(applyFee(expectedRewards).div(3))
   })
 
+  it('accruingFtsoRewards:multiple', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
+    await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 1000)
+
+    await ftsoManager.replaceRewardManager()
+    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    await secondFtsoRewardManager.addRewards(pair.address, 1, 2000)
+
+    let expectedRewards = expandTo18Decimals(8 + 4)
+      .div(10)
+      .mul(3)
+    expect(await ftsoReward.accruingFtsoRewards(constants.AddressZero)).to.eq(expectedRewards)
+    expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(expectedRewards.div(3))
+
+    await ftsoRewardManager.deactivate()
+    expectedRewards = expandTo18Decimals(8 + 4)
+      .div(10)
+      .mul(2)
+    expect(await ftsoReward.accruingFtsoRewards(constants.AddressZero)).to.eq(expectedRewards)
+    expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(expectedRewards.div(3))
+  })
+
   it('epochsWithUndistributedFtsoRewards', async () => {
     await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
     await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
@@ -142,6 +169,52 @@ describe('BlazeSwapFtsoReward', () => {
           .div(3)
       ),
     ])
+  })
+
+  it('epochsWithUndistributedFtsoRewards:multiple-separate', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 1000)
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+
+    await ftsoManager.replaceRewardManager()
+    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    await secondFtsoRewardManager.addRewards(pair.address, 2, 500)
+
+    await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
+
+    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
+    expect(amounts).to.deep.eq([expandTo18Decimals(8).div(10), expandTo18Decimals(8).div(20)])
+
+    await ftsoRewardManager.deactivate()
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    expect(epochs).to.deep.eq([BigNumber.from('2')])
+    expect(amounts).to.deep.eq([expandTo18Decimals(8).div(20)])
+  })
+
+  it('epochsWithUndistributedFtsoRewards:multiple-shared', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 500)
+
+    await ftsoManager.replaceRewardManager()
+    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    await secondFtsoRewardManager.addRewards(pair.address, 1, 500)
+
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+    await secondFtsoRewardManager.addRewards(pair.address, 2, 500)
+
+    await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
+
+    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
+    expect(amounts).to.deep.eq([expandTo18Decimals(8).div(10), expandTo18Decimals(8).div(20)])
+
+    await ftsoRewardManager.deactivate()
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
+    expect(amounts).to.deep.eq([expandTo18Decimals(8).div(20), expandTo18Decimals(8).div(20)])
   })
 
   it('distributeFtsoRewards', async () => {
@@ -284,16 +357,92 @@ describe('BlazeSwapFtsoReward', () => {
       .div(expandTo18Decimals(3).add(MINIMUM_LIQUIDITY))
     await expect(ftsoReward.connect(wallet).claimFtsoRewards([1], wallet.address, true))
       .to.emit(ftsoReward, 'FtsoRewardsClaimed')
-      .withArgs(wallet.address, wallet.address, BigNumber.from('1'), expectedWalletRewards1)
+      .withArgs(wallet.address, wallet.address, BigNumber.from('1'), expectedWalletRewards1, wallet.address)
     await expect(ftsoReward.connect(other).claimFtsoRewards([1, 2], other.address, true))
       .to.emit(ftsoReward, 'FtsoRewardsClaimed')
-      .withArgs(other.address, other.address, BigNumber.from('1'), expectedOtherRewards1)
+      .withArgs(other.address, other.address, BigNumber.from('1'), expectedOtherRewards1, other.address)
       .to.emit(ftsoReward, 'FtsoRewardsClaimed')
-      .withArgs(other.address, other.address, BigNumber.from('2'), expectedOtherRewards2)
+      .withArgs(other.address, other.address, BigNumber.from('2'), expectedOtherRewards2, other.address)
     expect(await ftsoReward.claimedFtsoRewards(wallet.address, 1)).to.eq(expectedWalletRewards1)
     expect(await ftsoReward.claimedFtsoRewards(wallet.address, 2)).to.eq(BigNumber.from(0))
     expect(await ftsoReward.claimedFtsoRewards(other.address, 1)).to.eq(expectedOtherRewards1)
     expect(await ftsoReward.claimedFtsoRewards(other.address, 2)).to.eq(expectedOtherRewards2)
+  })
+
+  it('claimFtsoRewardsByExecutor:None', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 100)
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+
+    await ftsoReward.distributeFtsoRewards([1])
+
+    const expectedRewards = expandTo18Decimals(1).div(100)
+    const expectedWalletRewards = expectedRewards
+      .mul(expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY))
+      .div(expandTo18Decimals(1))
+
+    await expect(
+      ftsoReward.connect(other).claimFtsoRewardsByExecutor([1], wallet.address, wallet.address, false)
+    ).to.be.revertedWith('BlazeSwap: FORBIDDEN')
+
+    await expect(() =>
+      ftsoReward.claimFtsoRewardsByExecutor([1], wallet.address, other.address, false)
+    ).to.changeEtherBalance(other, expectedWalletRewards)
+
+    expect(await ftsoReward.claimedFtsoRewards(wallet.address, 1)).to.eq(expectedWalletRewards)
+  })
+
+  it('claimFtsoRewardsByExecutor:OwnerOnly', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 100)
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+
+    await ftsoReward.distributeFtsoRewards([1])
+
+    const expectedRewards = expandTo18Decimals(1).div(100)
+    const expectedWalletRewards = expectedRewards
+      .mul(expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY))
+      .div(expandTo18Decimals(1))
+
+    const executorManager = IBlazeSwapExecutorManager__factory.connect(await manager.executorManager(), wallet)
+    await executorManager.setExecutorPermission(other.address, 1) // OwnerOnly
+    await expect(
+      ftsoReward.connect(other).claimFtsoRewardsByExecutor([1], wallet.address, other.address, false)
+    ).to.be.revertedWith('BlazeSwap: FORBIDDEN')
+
+    await expect(() =>
+      ftsoReward.claimFtsoRewardsByExecutor([1], wallet.address, wallet.address, false)
+    ).to.changeEtherBalance(wallet, expectedWalletRewards)
+
+    expect(await ftsoReward.claimedFtsoRewards(wallet.address, 1)).to.eq(expectedWalletRewards)
+  })
+
+  it('claimFtsoRewardsByExecutor:AnyAddress', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 100)
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+
+    await ftsoReward.distributeFtsoRewards([1])
+
+    const expectedRewards = expandTo18Decimals(1).div(100)
+    const expectedWalletRewards = expectedRewards
+      .mul(expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY))
+      .div(expandTo18Decimals(1))
+
+    const executorManager = IBlazeSwapExecutorManager__factory.connect(await manager.executorManager(), wallet)
+    await executorManager.setExecutorPermission(other.address, 2) // AnyAddress
+
+    await expect(() =>
+      ftsoReward.claimFtsoRewardsByExecutor([1], wallet.address, other.address, false)
+    ).to.changeEtherBalance(other, expectedWalletRewards)
+
+    expect(await ftsoReward.claimedFtsoRewards(wallet.address, 1)).to.eq(expectedWalletRewards)
   })
 
   it('epochsWithUnclaimedFtsoRewards', async () => {

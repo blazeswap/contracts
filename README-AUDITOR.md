@@ -5,8 +5,7 @@ BlazeSwap is a decentralized exchange for the Flare network. The core is based o
 ## Smart Contracts:
 
 The set of smart contracts of BlazeSwap, that are the target of the audit, comprises:
-- BlazeSwapMath: a contract with pure mathematical functions, sqrt and mulDiv on wide numbers (extracted into a separate contract to avoid bloating the pair smart contract code)
-- BlazeSwapManager: a contract maintaining the system parameters like trading fees and plugin addresses (extracted from the factory code to reduce the factory contract size)
+- BlazeSwapManager (with BlazeSwapMath and BlazeSwapExecutorManager): a contract maintaining the system parameters like trading fees and plugin addresses (extracted from the factory code to reduce the factory contract size)
 - BlazeSwapPair: the  contract that is instantiated for each pair that handles the low-level swap logic and the plugin system
 - BlazeSwapFactory: the contract that instantiates and initializes each pair, with different plugins based on the token types
 - BlazeSwapRouter: the high-level contract that allows to easily perform swaps

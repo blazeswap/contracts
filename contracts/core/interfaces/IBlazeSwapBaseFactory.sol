@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity >=0.5.0;
+pragma solidity >=0.7.5;
+pragma abicoder v2;
 
 interface IBlazeSwapBaseFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint256 count);

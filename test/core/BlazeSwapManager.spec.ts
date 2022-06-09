@@ -4,9 +4,10 @@ import { constants } from 'ethers'
 
 import { managerFixture } from './shared/fixtures'
 
+import AssetManagerController from '../../artifacts/contracts/core/test/AssetManagerController.sol/AssetManagerController.json'
 import BlazeSwapFAssetRewardPlugin from '../../artifacts/contracts/core/BlazeSwapFAssetRewardPlugin.sol/BlazeSwapFAssetRewardPlugin.json'
 import FAssetTest from '../../artifacts/contracts/core/test/FAssetTest.sol/FAssetTest.json'
-import { IBlazeSwapManager, IWNat } from '../../typechain-types'
+import { FtsoManager, FtsoManager__factory, IBlazeSwapManager, IWNat } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
 
@@ -17,10 +18,12 @@ describe('BlazeSwapManager', () => {
 
   let manager: IBlazeSwapManager
   let wNat: IWNat
+  let ftsoManager: FtsoManager
   beforeEach(async () => {
     const fixture = await loadFixture(managerFixture)
     manager = fixture.manager
     wNat = fixture.wNat
+    ftsoManager = FtsoManager__factory.connect(await fixture.priceSubmitter.getFtsoManager(), wallet)
   })
 
   it('rewardsFeeTo, rewardsFeeOn', async () => {
@@ -42,12 +45,16 @@ describe('BlazeSwapManager', () => {
     expect(await manager.rewardsFeeOn()).to.eq(false)
   })
 
-  it('wNat, delegationPlugin, ftsoRewardPlugin, fAssetRewardPlugin, assetManagerController, allowFAssetPairsWithoutPlugin', async () => {
+  it('executorManager, wNat, getFtsoRewardManagers, delegationPlugin, ftsoRewardPlugin, fAssetRewardPlugin, getLatestAssetManagerController, allowFAssetPairsWithoutPlugin', async () => {
+    expect(await manager.executorManager()).not.to.eq(constants.AddressZero)
     expect(await manager.wNat()).not.to.eq(constants.AddressZero)
+    const ftsoRewardManagers = await manager.getFtsoRewardManagers()
+    expect(ftsoRewardManagers.length).to.eq(1)
+    expect(ftsoRewardManagers[0]).not.to.eq(constants.AddressZero)
     expect(await manager.delegationPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.ftsoRewardPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.fAssetRewardPlugin()).to.eq(constants.AddressZero)
-    expect(await manager.assetManagerController()).to.eq(constants.AddressZero)
+    expect(await manager.getLatestAssetManagerController()).to.eq(constants.AddressZero)
     expect(await manager.allowFAssetPairsWithoutPlugin()).to.eq(false)
   })
 
@@ -58,13 +65,66 @@ describe('BlazeSwapManager', () => {
     await expect(manager.setConfigSetter(wallet.address)).to.be.revertedWith('Configurable: FORBIDDEN')
   })
 
+  it('getFtsoRewardManagers, updateFtsoRewardManagers', async () => {
+    const ftsoRewardManager1 = await ftsoManager.rewardManager()
+    await ftsoManager.replaceRewardManager()
+    const ftsoRewardManager2 = await ftsoManager.rewardManager()
+    let ftsoRewardManagers = await manager.getFtsoRewardManagers()
+    expect(ftsoRewardManagers.length).to.eq(2)
+    await ftsoManager.replaceRewardManager()
+    const ftsoRewardManager3 = await ftsoManager.rewardManager()
+
+    ftsoRewardManagers = await manager.getFtsoRewardManagers()
+    expect(ftsoRewardManagers.length).to.eq(3)
+    expect(ftsoRewardManagers).to.deep.eq([ftsoRewardManager1, ftsoRewardManager2, ftsoRewardManager3])
+
+    await ftsoManager.replaceRewardManager()
+    const ftsoRewardManager4 = await ftsoManager.rewardManager()
+    await expect(manager.getFtsoRewardManagers()).to.be.revertedWith('BlazeSwap: FTSO_REWARD_MANAGERS')
+
+    await expect(manager.updateFtsoRewardManagers())
+      .to.emit(manager, 'AddFtsoRewardManager')
+      .withArgs(ftsoRewardManager2)
+      .to.emit(manager, 'AddFtsoRewardManager')
+      .withArgs(ftsoRewardManager3)
+      .to.emit(manager, 'AddFtsoRewardManager')
+      .withArgs(ftsoRewardManager4)
+
+    ftsoRewardManagers = await manager.getFtsoRewardManagers()
+    expect(ftsoRewardManagers.length).to.eq(4)
+    expect(ftsoRewardManagers).to.deep.eq([
+      ftsoRewardManager1,
+      ftsoRewardManager2,
+      ftsoRewardManager3,
+      ftsoRewardManager4,
+    ])
+  })
+
   it('setAssetManagerController', async () => {
     await expect(manager.connect(other).setAssetManagerController(other.address)).to.be.revertedWith(
       'Configurable: FORBIDDEN'
     )
-    await manager.setAssetManagerController(other.address)
-    expect(await manager.assetManagerController()).to.eq(other.address)
+    const controller = await deployContract(wallet, AssetManagerController)
+    await manager.setAssetManagerController(controller.address)
+    expect(await manager.getLatestAssetManagerController()).to.eq(controller.address)
     await expect(manager.setAssetManagerController(other.address)).to.be.revertedWith('BlazeSwap: ALREADY_SET')
+  })
+
+  it('getLatestAssetManagerController, updateAssetManagerController', async () => {
+    const controller1 = await deployContract(wallet, AssetManagerController)
+    await manager.setAssetManagerController(controller1.address)
+
+    const controller2 = await deployContract(wallet, AssetManagerController)
+    await controller1.replaceWith(controller2.address)
+
+    const controller3 = await deployContract(wallet, AssetManagerController)
+    await controller2.replaceWith(controller3.address)
+
+    expect(await manager.getLatestAssetManagerController()).to.eq(controller3.address)
+    await expect(manager.updateAssetManagerController())
+      .to.emit(manager, 'UpdateAssetManagerController')
+      .withArgs(controller3.address)
+    expect(await manager.getLatestAssetManagerController()).to.eq(controller3.address)
   })
 
   it('setAllowFAssetPairsWithoutPlugin', async () => {
@@ -103,9 +163,18 @@ describe('BlazeSwapManager', () => {
   })
 
   it('getTokenType', async () => {
-    expect(await manager.callStatic.getTokenType(other.address)).to.eq(0) // Generic
-    expect(await manager.callStatic.getTokenType(wNat.address)).to.eq(1) // WNat
+    expect(await manager.getTokenType(other.address)).to.eq(0) // Generic
+    expect(await manager.getTokenType(wNat.address)).to.eq(1) // WNat
     const fAsset = await deployContract(wallet, FAssetTest, [other.address, 1])
-    expect(await manager.callStatic.getTokenType(fAsset.address)).to.eq(2) // FAsset
+    expect(await manager.getTokenType(fAsset.address)).to.eq(2) // FAsset
+
+    const controller1 = await deployContract(wallet, AssetManagerController)
+    const controller2 = await deployContract(wallet, AssetManagerController)
+    await controller1.replaceWith(controller2.address)
+    await manager.setAssetManagerController(controller1.address)
+
+    expect(await manager.getTokenType(fAsset.address)).to.eq(0) // Not handled by Asset Manager Controller
+    await controller2.addAssetManager(other.address)
+    expect(await manager.getTokenType(fAsset.address)).to.eq(2) // FAsset
   })
 })

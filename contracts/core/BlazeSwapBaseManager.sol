@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import './interfaces/IBlazeSwapBaseManager.sol';
 import '../shared/Configurable.sol';
+import './BlazeSwapMath.sol';
 
 contract BlazeSwapBaseManager is IBlazeSwapBaseManager, Configurable {
-    IBlazeSwapMath public mathContext;
+    address public immutable mathContext;
 
     address public tradingFeeTo;
 
@@ -15,9 +16,9 @@ contract BlazeSwapBaseManager is IBlazeSwapBaseManager, Configurable {
     }
     mapping(address => FeeRecipient) private tradingFeeSplit;
 
-    constructor(address _configSetter, address _mathContext) {
+    constructor(address _configSetter) {
         initConfigurable(_configSetter);
-        mathContext = IBlazeSwapMath(_mathContext);
+        mathContext = address(new BlazeSwapMath());
     }
 
     function setTradingFeeTo(address _tradingFeeTo) external onlyConfigSetter {
