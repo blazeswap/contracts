@@ -1,8 +1,9 @@
-const { deployContract, getEnvParam, getWNat } = require('./utils')
+const { deployContract, getEnvParam } = require('./utils')
 
 async function main() {
   const factory = getEnvParam('FACTORY')
-  const wNat = getWNat()
+  const manager = await ethers.getContractAt('BlazeSwapManager', getEnvParam('MANAGER'))
+  const wNat = await manager.wNat()
   await deployContract('BlazeSwapRouter', [factory, wNat, false])
 }
 
