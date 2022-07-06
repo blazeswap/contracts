@@ -136,6 +136,23 @@ describe('BlazeSwapDelegation', () => {
     ])
   })
 
+  it('providersSubset, providerSubsetWithVotes', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+    await addLiquidity(other1, expandTo18Decimals(2), expandTo18Decimals(2))
+    await addLiquidity(other2, expandTo18Decimals(3), expandTo18Decimals(3))
+    await delegation.voteFor(TEST_PROVIDERS[0])
+    await delegation.connect(other1).voteFor(TEST_PROVIDERS[1])
+    await delegation.connect(other2).voteFor(TEST_PROVIDERS[2])
+    expect(await delegation.providersSubset(0, 100)).to.deep.eq(TEST_PROVIDERS)
+    expect(await delegation.providersSubset(0, 3)).to.deep.eq(TEST_PROVIDERS)
+    expect(await delegation.providersSubset(0, 1)).to.deep.eq([TEST_PROVIDERS[0]])
+    expect(await delegation.providersSubset(1, 2)).to.deep.eq([TEST_PROVIDERS[1], TEST_PROVIDERS[2]])
+
+    const [providers, votes] = await delegation.providersSubsetWithVotes(1, 1)
+    expect(providers).to.deep.eq([TEST_PROVIDERS[1]])
+    expect(votes).to.deep.eq([expandTo18Decimals(2)])
+  })
+
   it('move votes', async () => {
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
     await addLiquidity(other1, expandTo18Decimals(2), expandTo18Decimals(2))

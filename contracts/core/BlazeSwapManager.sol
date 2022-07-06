@@ -66,7 +66,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         }
     }
 
-    function getFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory managers) {
+    function getFtsoRewardManagers() public view returns (IFtsoRewardManager[] memory managers) {
         IFtsoRewardManager lastSaved = ftsoRewardManagers[ftsoRewardManagers.length - 1];
         IFtsoRewardManager current = BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager());
         if (current == lastSaved) {
@@ -89,6 +89,31 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
             }
             for (uint256 i; i < count; i++) {
                 managers[previousLen + i] = extra[count - i - 1];
+            }
+        }
+    }
+
+    function getActiveFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory managers) {
+        IFtsoRewardManager[] memory allManagers = getFtsoRewardManagers();
+        bool[] memory enabledStatus = new bool[](allManagers.length);
+        uint256 disabledCount;
+        for (uint256 i; i < allManagers.length; i++) {
+            bool active = allManagers[i].active();
+            if (active) {
+                enabledStatus[i] = true;
+            } else {
+                disabledCount++;
+            }
+        }
+        if (disabledCount == 0) {
+            managers = allManagers;
+        } else {
+            managers = new IFtsoRewardManager[](allManagers.length - disabledCount);
+            uint256 j;
+            for (uint256 i; i < allManagers.length; i++) {
+                if (enabledStatus[i]) {
+                    managers[j++] = allManagers[i];
+                }
             }
         }
     }

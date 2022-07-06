@@ -14,6 +14,8 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function getFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory);
 
+    function getActiveFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory);
+
     function setRewardsFeeTo(address _rewardsFeeTo) external;
 
     function rewardsFeeTo() external view returns (address);

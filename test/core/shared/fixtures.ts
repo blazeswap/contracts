@@ -78,7 +78,6 @@ interface BaseFactoryFixture extends BaseManagerFixture {
 
 interface FactoryFixture extends ManagerFixture {
   factory: IBlazeSwapFactory
-  priceSubmitter: IPriceSubmitter
   ftsoManager: FtsoManager
   ftsoRewardManager: FtsoRewardManager
 }
@@ -93,7 +92,6 @@ export async function baseFactoryFixture(
 }
 
 export async function factoryFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<FactoryFixture> {
-  await provider.send('hardhat_setCode', [PRICE_SUBMITTER, PriceSubmitter.deployedBytecode])
   const { manager, wNat, priceSubmitter } = await managerFixture([wallet], provider)
   const ftsoManager = FtsoManager__factory.connect(await priceSubmitter.getFtsoManager(), wallet)
   const ftsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)

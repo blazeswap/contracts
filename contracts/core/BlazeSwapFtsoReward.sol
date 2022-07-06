@@ -26,6 +26,7 @@ library BlazeSwapFtsoRewardStorage {
 
     struct Layout {
         IBlazeSwapExecutorManager executorManager;
+        mapping(uint256 => bool) distributedRewardEpochs;
         mapping(uint256 => FtsoReward) pendingRewards;
         mapping(address => mapping(uint256 => uint256)) claimedRewards;
     }
@@ -53,21 +54,20 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         BlazeSwapDelegationStorage.Layout storage s = BlazeSwapDelegationStorage.layout();
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
-        IFtsoRewardManager[] memory ftsoRewardManagers = s.manager.getFtsoRewardManagers();
+        IFtsoRewardManager[] memory ftsoRewardManagers = s.manager.getActiveFtsoRewardManagers();
         bool rewardsFeeOn = s.manager.rewardsFeeOn();
         uint256 totalRewards;
         address payable rewardManagerAddress = BlazeSwapRewardLibrary.rewardManagerFor(address(this));
         for (uint256 i; i < epochs.length; i++) {
             uint256 epoch = epochs[i];
+            if (l.distributedRewardEpochs[epoch]) continue;
             uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
             uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
             uint256[] memory singleEpoch = new uint256[](1);
             singleEpoch[0] = epoch;
             uint256 epochRewards;
             for (uint256 j; j < ftsoRewardManagers.length; j++) {
-                if (ftsoRewardManagers[j].active()) {
-                    epochRewards += ftsoRewardManagers[j].claimReward(rewardManagerAddress, singleEpoch);
-                }
+                epochRewards += ftsoRewardManagers[j].claimReward(rewardManagerAddress, singleEpoch);
             }
             if (epochRewards > 0) {
                 totalRewards += epochRewards;
@@ -81,6 +81,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
                         votePower
                     );
                 }
+                l.distributedRewardEpochs[epoch] = true;
                 emit IBlazeSwapFtsoReward.FtsoRewardsDistributed(epoch, epochRewards, msg.sender);
             }
         }
@@ -121,97 +122,98 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         }
     }
 
-    function epochsWithUndistributedFtsoRewards(IFtsoRewardManager[] memory ftsoRewardManagers)
-        private
-        view
-        returns (uint256[] memory epochs)
-    {
-        uint256[][] memory allEpochs = new uint256[][](ftsoRewardManagers.length);
-        uint256 maxLen;
-        for (uint256 i; i < ftsoRewardManagers.length; i++) {
-            if (ftsoRewardManagers[i].active()) {
-                allEpochs[i] = ftsoRewardManagers[i].getEpochsWithUnclaimedRewards(address(this));
-                maxLen += allEpochs[i].length;
+    function getActiveRewardEpochsExclusive(
+        IFtsoManager ftsoManager,
+        uint256 startEpoch,
+        uint256 endEpoch
+    ) private view returns (uint256 startEpochIdInclusive, uint256 endEpochIdExclusive) {
+        uint256 firstActiveEpoch = ftsoManager.getRewardEpochToExpireNext();
+        uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
+        startEpochIdInclusive = (startEpoch < firstActiveEpoch) ? firstActiveEpoch : startEpoch;
+        endEpochIdExclusive = (endEpoch == 0 || endEpoch >= currentEpoch) ? currentEpoch : endEpoch + 1;
+    }
+
+    function adjustRewardAmount(
+        IFtsoManager ftsoManager,
+        uint256 epoch,
+        uint256 totalAmount,
+        bool rewardsFeeOn,
+        address beneficiary
+    ) private view returns (uint256 amount) {
+        uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
+        uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
+        uint256 beneficiaryVotePower = (beneficiary != address(0))
+            ? IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlock)
+            : votePower;
+        if (beneficiaryVotePower > 0 && votePower > 0) {
+            amount = totalAmount;
+            if (rewardsFeeOn) {
+                amount = applyFee(amount);
             }
+            amount = (amount * beneficiaryVotePower) / votePower; // this cannot overflow
         }
-        epochs = new uint256[](maxLen);
+    }
+
+    function epochsWithUndistributedFtsoRewards(
+        address beneficiary,
+        uint256 startEpoch,
+        uint256 endEpoch
+    ) external view onlyDelegatedCall returns (uint256[] memory epochs, uint256[] memory amounts) {
+        IFtsoRewardManager[] memory ftsoRewardManagers;
+        bool rewardsFeeOn;
+        {
+            // avoid stack too deep error
+            BlazeSwapDelegationStorage.Layout storage s = BlazeSwapDelegationStorage.layout();
+            ftsoRewardManagers = s.manager.getActiveFtsoRewardManagers();
+            rewardsFeeOn = s.manager.rewardsFeeOn();
+        }
+        IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
+        (startEpoch, endEpoch) = getActiveRewardEpochsExclusive(ftsoManager, startEpoch, endEpoch);
+        uint256 scanLen = endEpoch - startEpoch;
+        epochs = new uint256[](scanLen);
+        amounts = new uint256[](scanLen);
         uint256 count;
-        for (uint256 i; i < ftsoRewardManagers.length; i++) {
-            uint256[] memory epochsSubset = allEpochs[i];
-            for (uint256 j; j < epochsSubset.length; j++) {
-                uint256 curEpoch = epochsSubset[j];
-                uint256 k;
-                // it might be enough to check the last one, but perform a full scan for safety
-                while (k < count && epochs[k] != curEpoch) k++;
-                if (k == count) {
-                    // add epoch
-                    epochs[count++] = curEpoch;
+        for (uint256 epoch = startEpoch; epoch < endEpoch; epoch++) {
+            if (BlazeSwapFtsoRewardStorage.layout().distributedRewardEpochs[epoch]) continue;
+            for (uint256 j; j < ftsoRewardManagers.length; j++) {
+                (, uint256[] memory rewardAmounts, bool[] memory claimed, bool claimable) = ftsoRewardManagers[j]
+                    .getStateOfRewards(address(this), epoch);
+                if (claimable) {
+                    for (uint256 k; k < rewardAmounts.length; k++) {
+                        if (!claimed[k]) {
+                            amounts[count] += rewardAmounts[k];
+                        }
+                    }
                 }
             }
+            if (amounts[count] > 0) {
+                amounts[count] = adjustRewardAmount(ftsoManager, epoch, amounts[count], rewardsFeeOn, beneficiary);
+                epochs[count++] = epoch;
+            }
         }
-        uint256 toDrop = maxLen - count;
+        uint256 toDrop = scanLen - count;
         if (toDrop > 0) {
             assembly {
                 // reduce array lengths
                 mstore(epochs, sub(mload(epochs), toDrop))
+                mstore(amounts, sub(mload(amounts), toDrop))
             }
         }
     }
 
-    function epochsWithUndistributedFtsoRewards(address beneficiary)
-        external
-        view
-        onlyDelegatedCall
-        returns (uint256[] memory epochs, uint256[] memory amounts)
-    {
-        BlazeSwapDelegationStorage.Layout storage s = BlazeSwapDelegationStorage.layout();
-        IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
-        IFtsoRewardManager[] memory ftsoRewardManagers = s.manager.getFtsoRewardManagers();
-        epochs = epochsWithUndistributedFtsoRewards(ftsoRewardManagers);
-        amounts = new uint256[](epochs.length);
-        bool rewardsFeeOn = s.manager.rewardsFeeOn();
-        for (uint256 i; i < epochs.length; i++) {
-            uint256 epoch = epochs[i];
-            uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
-            uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
-            uint256 beneficiaryVotePower = (beneficiary != address(0))
-                ? IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlock)
-                : votePower;
-            if (beneficiaryVotePower > 0 && votePower > 0) {
-                for (uint256 j; j < ftsoRewardManagers.length; j++) {
-                    if (ftsoRewardManagers[j].active()) {
-                        (, uint256[] memory rewardAmounts, , ) = ftsoRewardManagers[j].getStateOfRewards(
-                            address(this),
-                            epoch
-                        );
-                        for (uint256 k; k < rewardAmounts.length; k++) {
-                            amounts[i] += rewardAmounts[k];
-                        }
-                    }
-                }
-                if (rewardsFeeOn) {
-                    amounts[i] = applyFee(amounts[i]);
-                }
-                amounts[i] = (amounts[i] * beneficiaryVotePower) / votePower; // this cannot overflow
-            }
-        }
-    }
-
-    function epochsWithUnclaimedFtsoRewards(address beneficiary)
-        external
-        view
-        onlyDelegatedCall
-        returns (uint256[] memory epochs, uint256[] memory amounts)
-    {
+    function epochsWithUnclaimedFtsoRewards(
+        address beneficiary,
+        uint256 startEpoch,
+        uint256 endEpoch
+    ) external view onlyDelegatedCall returns (uint256[] memory epochs, uint256[] memory amounts) {
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
-        uint256 currentRewardEpoch = ftsoManager.getCurrentRewardEpoch();
-        uint256 firstRewardEpoch = ftsoManager.getRewardEpochToExpireNext();
-        uint256 scanLen = currentRewardEpoch - firstRewardEpoch;
+        (startEpoch, endEpoch) = getActiveRewardEpochsExclusive(ftsoManager, startEpoch, endEpoch);
+        uint256 scanLen = endEpoch - startEpoch;
         epochs = new uint256[](scanLen);
         amounts = new uint256[](scanLen);
         uint256 count;
-        for (uint256 epoch = firstRewardEpoch; epoch < currentRewardEpoch; epoch++) {
+        for (uint256 epoch = startEpoch; epoch < endEpoch; epoch++) {
             BlazeSwapFtsoRewardStorage.FtsoReward storage rewards = l.pendingRewards[epoch];
             // no (remaining) rewards
             if (rewards.remainingAmount == 0 || rewards.remainingWeight == 0) continue;

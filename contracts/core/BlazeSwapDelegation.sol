@@ -81,6 +81,28 @@ contract BlazeSwapDelegation is
         return BlazeSwapDelegationStorage.layout().allProviders;
     }
 
+    function providersSubset(uint256 offset, uint256 count)
+        external
+        view
+        onlyDelegatedCall
+        returns (address[] memory providersPage)
+    {
+        address[] storage allProviders = BlazeSwapDelegationStorage.layout().allProviders;
+        uint256 totalLen = allProviders.length;
+        uint256 len;
+        if (offset < totalLen) {
+            if (offset + count > totalLen) {
+                len = totalLen - offset;
+            } else {
+                len = count;
+            }
+        }
+        providersPage = new address[](len);
+        for (uint256 i; i < len; i++) {
+            providersPage[i] = allProviders[offset + i];
+        }
+    }
+
     function providersWithVotes() external view onlyDelegatedCall returns (address[] memory, uint256[] memory) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         address[] memory allProviders = l.allProviders;
@@ -89,6 +111,32 @@ contract BlazeSwapDelegation is
             allVotes[i] = l.providerVotes[allProviders[i]];
         }
         return (allProviders, allVotes);
+    }
+
+    function providersSubsetWithVotes(uint256 offset, uint256 count)
+        external
+        view
+        onlyDelegatedCall
+        returns (address[] memory providersPage, uint256[] memory votesPage)
+    {
+        BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
+        address[] storage allProviders = l.allProviders;
+        uint256 totalLen = allProviders.length;
+        uint256 len;
+        if (offset < totalLen) {
+            if (offset + count > totalLen) {
+                len = totalLen - offset;
+            } else {
+                len = count;
+            }
+        }
+        providersPage = new address[](len);
+        votesPage = new uint256[](len);
+        for (uint256 i; i < len; i++) {
+            address p = allProviders[offset + i];
+            providersPage[i] = p;
+            votesPage[i] = l.providerVotes[p];
+        }
     }
 
     function addProvider(BlazeSwapDelegationStorage.Layout storage l, address provider) private {
@@ -231,18 +279,20 @@ contract BlazeSwapDelegation is
     }
 
     function pluginSelectors() private pure returns (bytes4[] memory s) {
-        s = new bytes4[](11);
+        s = new bytes4[](13);
         s[0] = IBlazeSwapDelegation.voteOf.selector;
         s[1] = IBlazeSwapDelegation.providerVotes.selector;
         s[2] = IBlazeSwapDelegation.providers.selector;
         s[3] = IBlazeSwapDelegation.providersCount.selector;
         s[4] = IBlazeSwapDelegation.providersAll.selector;
-        s[5] = IBlazeSwapDelegation.providersWithVotes.selector;
-        s[6] = IBlazeSwapDelegation.voteFor.selector;
-        s[7] = IBlazeSwapDelegation.currentProviders.selector;
-        s[8] = IBlazeSwapDelegation.mostVotedProviders.selector;
-        s[9] = IBlazeSwapDelegation.changeProviders.selector;
-        s[10] = IBlazeSwapDelegation.withdrawRewardFees.selector;
+        s[5] = IBlazeSwapDelegation.providersSubset.selector;
+        s[6] = IBlazeSwapDelegation.providersWithVotes.selector;
+        s[7] = IBlazeSwapDelegation.providersSubsetWithVotes.selector;
+        s[8] = IBlazeSwapDelegation.voteFor.selector;
+        s[9] = IBlazeSwapDelegation.currentProviders.selector;
+        s[10] = IBlazeSwapDelegation.mostVotedProviders.selector;
+        s[11] = IBlazeSwapDelegation.changeProviders.selector;
+        s[12] = IBlazeSwapDelegation.withdrawRewardFees.selector;
     }
 
     function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {

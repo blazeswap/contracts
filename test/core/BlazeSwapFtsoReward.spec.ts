@@ -134,10 +134,10 @@ describe('BlazeSwapFtsoReward', () => {
     await ftsoRewardManager.addRewards(pair.address, 2, 500)
     await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
 
-    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([expandTo18Decimals(8 + 4).div(10), expandTo18Decimals(8 + 4).div(20)])
-    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(other.address)
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(other.address, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([
       expandTo18Decimals(8 + 4)
@@ -149,13 +149,13 @@ describe('BlazeSwapFtsoReward', () => {
     ])
 
     await manager.setRewardsFeeOn(true)
-    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([
       applyFee(expandTo18Decimals(8 + 4).div(10)),
       applyFee(expandTo18Decimals(8 + 4).div(20)),
     ])
-    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(other.address)
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(other.address, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([
       applyFee(
@@ -183,12 +183,12 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
 
-    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([expandTo18Decimals(8).div(10), expandTo18Decimals(8).div(20)])
 
     await ftsoRewardManager.deactivate()
-    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('2')])
     expect(amounts).to.deep.eq([expandTo18Decimals(8).div(20)])
   })
@@ -207,12 +207,12 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
 
-    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    let [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([expandTo18Decimals(8).div(10), expandTo18Decimals(8).div(20)])
 
     await ftsoRewardManager.deactivate()
-    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero)
+    ;[epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(constants.AddressZero, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([expandTo18Decimals(8).div(20), expandTo18Decimals(8).div(20)])
   })
@@ -466,7 +466,7 @@ describe('BlazeSwapFtsoReward', () => {
       .mul(expandTo18Decimals(6).sub(MINIMUM_LIQUIDITY))
       .div(expandTo18Decimals(6))
 
-    const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
+    const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([expectedWalletRewards1, expectedWalletRewards2])
   })
@@ -484,7 +484,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoManager.setRewardEpochToExpireNext(2)
 
-    const { epochs } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
+    const { epochs } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address, 0, 0)
     expect(epochs).to.deep.eq([BigNumber.from('2')])
 
     await ftsoReward.claimFtsoRewards([1, 2], wallet.address, true)
@@ -553,7 +553,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoReward.distributeFtsoRewards([1])
 
-    const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
+    const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address, 0, 0)
 
     await delegation.withdrawRewardFees()
 
@@ -583,7 +583,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
 
-    const [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(wallet.address)
+    const [epochs, amounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(wallet.address, 0, 0)
     const to = wallet.address
     const wrapped = true
 

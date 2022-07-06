@@ -10,15 +10,17 @@ interface IBlazeSwapFtsoReward {
 
     function distributeFtsoRewards(uint256[] calldata epoch) external;
 
-    function epochsWithUndistributedFtsoRewards(address beneficiary)
-        external
-        view
-        returns (uint256[] memory epochs, uint256[] memory amounts);
+    function epochsWithUndistributedFtsoRewards(
+        address beneficiary,
+        uint256 startEpoch,
+        uint256 endEpoch
+    ) external view returns (uint256[] memory epochs, uint256[] memory amounts);
 
-    function epochsWithUnclaimedFtsoRewards(address beneficiary)
-        external
-        view
-        returns (uint256[] memory epochs, uint256[] memory amounts);
+    function epochsWithUnclaimedFtsoRewards(
+        address beneficiary,
+        uint256 startEpoch,
+        uint256 endEpoch
+    ) external view returns (uint256[] memory epochs, uint256[] memory amounts);
 
     function claimFtsoRewards(
         uint256[] calldata epochs,
