@@ -21,6 +21,11 @@ import './BlazeSwapPair.sol';
 library BlazeSwapDelegationStorage {
     bytes32 internal constant STORAGE_SLOT = keccak256('blazeswap.storage.BlazeSwapDelegation');
 
+    struct BlockAndOrigin {
+        uint256 blockNum;
+        address origin;
+    }
+
     struct Layout {
         // gas savings
         IBlazeSwapPair pair;
@@ -30,6 +35,7 @@ library BlazeSwapDelegationStorage {
         mapping(address => address) providerDelegation; // delegator => provider
         mapping(address => uint256) providerVotes; // provider => votes
         address[] allProviders;
+        BlockAndOrigin lastProvidersChange;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -159,6 +165,13 @@ contract BlazeSwapDelegation is
         uint256 amount
     ) external onlyDelegatedCall {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
+        if (to == address(0)) {
+            // avoid decreasing vote weight in the same transaction that changed providers
+            require(
+                l.lastProvidersChange.blockNum != block.number || l.lastProvidersChange.origin != tx.origin,
+                'BlazeSwap: FLASH_ATTACK'
+            );
+        }
         moveVotes(l, l.providerDelegation[from], l.providerDelegation[to], amount);
     }
 
@@ -210,7 +223,7 @@ contract BlazeSwapDelegation is
         return delegatedProviders;
     }
 
-    function checkMostVotedProviders(BlazeSwapDelegationStorage.Layout storage l, address[2] memory newProviders)
+    function checkMostVotedProviders(BlazeSwapDelegationStorage.Layout storage l, address[2] calldata newProviders)
         private
         view
     {
@@ -250,9 +263,10 @@ contract BlazeSwapDelegation is
         BlazeSwapRewardManager(payable(l.rewardManager)).changeProviders(newProviders);
     }
 
-    function changeProviders(address[2] memory newProviders) external onlyDelegatedCall {
+    function changeProviders(address[2] calldata newProviders) external onlyDelegatedCall {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         checkMostVotedProviders(l, newProviders);
+        l.lastProvidersChange = BlazeSwapDelegationStorage.BlockAndOrigin(block.number, tx.origin);
         changeProviders(l, newProviders);
     }
 
