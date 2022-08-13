@@ -2,7 +2,9 @@
 pragma solidity >=0.7.5;
 pragma abicoder v2;
 
-interface IBlazeSwapRouter {
+import '../../core/interfaces/IBlazeSwapMulticall.sol';
+
+interface IBlazeSwapRouter is IBlazeSwapMulticall {
     function factory() external view returns (address);
 
     function wNat() external view returns (address);
