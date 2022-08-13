@@ -6,8 +6,6 @@ import '../interfaces/flare/IFtsoManager.sol';
 import '../interfaces/flare/IWNat.sol';
 import '../../shared/libraries/TransferHelper.sol';
 
-import './WNAT.sol';
-
 contract FtsoRewardManager is IFtsoRewardManager {
     IFtsoManager private immutable ftsoManager;
 
@@ -116,4 +114,22 @@ contract FtsoRewardManager is IFtsoRewardManager {
     function deactivate() external {
         active = false;
     }
+
+    function getUnclaimedReward(uint256, address) external pure returns (uint256, uint256) {
+        revert('NOT IMPLEMENTED');
+    }
+
+    function getDataProviderCurrentFeePercentage(address) external pure returns (uint256) {
+        return 20_00;
+    }
+
+    function getDataProviderScheduledFeePercentageChanges(address)
+        external
+        pure
+        returns (
+            uint256[] memory _feePercentageBIPS,
+            uint256[] memory _validFromEpoch,
+            bool[] memory _fixed
+        )
+    {}
 }

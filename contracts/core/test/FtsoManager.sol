@@ -39,4 +39,20 @@ contract FtsoManager is IFtsoManager {
     function getRewardEpochToExpireNext() external view returns (uint256) {
         return rewardEpochToExpireNext;
     }
+
+    function rewardEpochDurationSeconds() external pure returns (uint256) {
+        return 7 days;
+    }
+
+    function rewardEpochs(uint256)
+        external
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        revert('NOT IMPLEMENTED');
+    }
 }

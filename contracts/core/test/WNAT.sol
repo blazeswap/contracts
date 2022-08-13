@@ -203,4 +203,12 @@ contract WNAT is IWNat {
         delete (delegation[msg.sender]);
         delegatedBips[msg.sender] = 0;
     }
+
+    function totalVotePowerAt(uint256 _blockNumber) external view returns (uint256) {
+        return totalSupplyAt(_blockNumber);
+    }
+
+    function batchVotePowerOfAt(address[] memory, uint256) external pure returns (uint256[] memory) {
+        revert('NOT IMPLEMENTED');
+    }
 }

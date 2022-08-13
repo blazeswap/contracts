@@ -16,4 +16,11 @@ interface IVPToken {
     function delegate(address _to, uint256 _bips) external;
 
     function undelegateAll() external;
+
+    function totalVotePowerAt(uint256 _blockNumber) external view returns (uint256);
+
+    function batchVotePowerOfAt(address[] memory _owners, uint256 _blockNumber)
+        external
+        view
+        returns (uint256[] memory);
 }
