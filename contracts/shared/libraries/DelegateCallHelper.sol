@@ -6,12 +6,11 @@ library DelegateCallHelper {
         (bool success, bytes memory result) = recipient.delegatecall(data);
 
         if (!success) {
-            // https://ethereum.stackexchange.com/a/83577
-            if (result.length < 68) revert('DelegateCallHelper: revert with no reason');
+            if (result.length == 0) revert('DelegateCallHelper: revert with no reason');
             assembly {
-                result := add(result, 0x04)
+                let result_len := mload(result)
+                revert(add(32, result), result_len)
             }
-            revert(abi.decode(result, (string)));
         }
 
         return result;
