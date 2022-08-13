@@ -49,7 +49,7 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
         IBlazeSwapManager m = IBlazeSwapManager(manager);
         address plugin = m.fAssetRewardPlugin();
         require(plugin != address(0) && isFAssetPairWithoutPlugin[pair], 'BlazeSwap: UPGRADE_NOT_NEEDED');
-        BlazeSwapPair(payable(pair)).addPlugin(plugin);
         isFAssetPairWithoutPlugin[pair] = false;
+        BlazeSwapPair(payable(pair)).addPlugin(plugin);
     }
 }
