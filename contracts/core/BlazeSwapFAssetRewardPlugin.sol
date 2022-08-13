@@ -5,7 +5,7 @@ import './interfaces/IBlazeSwapFAssetRewardPlugin.sol';
 import './BlazeSwapFAssetReward.sol';
 
 contract BlazeSwapFAssetRewardPlugin is IBlazeSwapFAssetRewardPlugin {
-    address public implementation = address(new BlazeSwapFAssetReward());
+    address public immutable implementation = address(new BlazeSwapFAssetReward());
 
     uint256 public immutable testValue1;
     string public testValue2;

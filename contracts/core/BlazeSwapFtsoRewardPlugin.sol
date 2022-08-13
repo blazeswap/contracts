@@ -5,5 +5,5 @@ import './interfaces/IBlazeSwapFtsoRewardPlugin.sol';
 import './BlazeSwapFtsoReward.sol';
 
 contract BlazeSwapFtsoRewardPlugin is IBlazeSwapFtsoRewardPlugin {
-    address public implementation = address(new BlazeSwapFtsoReward());
+    address public immutable implementation = address(new BlazeSwapFtsoReward());
 }

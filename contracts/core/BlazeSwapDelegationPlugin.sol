@@ -6,7 +6,7 @@ import '../shared/CentrallyConfigurable.sol';
 import './BlazeSwapDelegation.sol';
 
 contract BlazeSwapDelegationPlugin is IBlazeSwapDelegationPlugin, CentrallyConfigurable {
-    address public implementation = address(new BlazeSwapDelegation());
+    address public immutable implementation = address(new BlazeSwapDelegation());
 
     address public initialProvider;
 
