@@ -21,7 +21,7 @@ contract BlazeSwapRewardManager is ParentRelation {
 
     receive() external payable {}
 
-    function changeProviders(address[2] memory providers) external onlyParent {
+    function changeProviders(address[2] calldata providers) external onlyParent {
         wNat.changeProviders(providers);
     }
 
