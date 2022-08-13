@@ -25,10 +25,7 @@ abstract contract ERC20 {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
+        uint256 chainId = block.chainid;
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
