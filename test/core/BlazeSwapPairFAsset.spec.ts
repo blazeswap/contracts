@@ -8,6 +8,7 @@ import { pairFAssetFixture, TEST_PROVIDERS } from './shared/fixtures'
 import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import {
   FAsset,
+  IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
   IBlazeSwapFAssetReward__factory,
@@ -49,6 +50,7 @@ describe('BlazeSwapPairFAsset', () => {
   it('supportsInterface', async () => {
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(false)
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFAssetReward__factory.createInterface()))).to.eq(false) // created with allowFAssetPairWithoutPlugin
   })
 

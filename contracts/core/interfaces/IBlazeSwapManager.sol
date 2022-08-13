@@ -10,7 +10,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
     event UpdateAssetManagerController(address assetManagerController);
     event AddFtsoRewardManager(address ftsoRewardManager);
 
-    function updateFtsoRewardManagers() external;
+    function updateFtsoRewardManagers(uint256 upTo) external;
 
     function getFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory);
 
@@ -20,9 +20,17 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function rewardsFeeTo() external view returns (address);
 
-    function setRewardsFeeOn(bool _rewardsFeeOn) external;
+    function setFtsoRewardsFeeOn(bool _on) external;
 
-    function rewardsFeeOn() external view returns (bool);
+    function ftsoRewardsFeeOn() external view returns (bool);
+
+    function setFAssetRewardsFeeOn(bool _on) external;
+
+    function fAssetRewardsFeeOn() external view returns (bool);
+
+    function setAirdropFeeOn(bool _on) external;
+
+    function airdropFeeOn() external view returns (bool);
 
     function wNat() external view returns (address);
 
@@ -33,6 +41,8 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
     function delegationPlugin() external view returns (address);
 
     function ftsoRewardPlugin() external view returns (address);
+
+    function airdropPlugin() external view returns (address);
 
     function fAssetRewardPlugin() external view returns (address);
 
@@ -49,6 +59,8 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
     function setDelegationPlugin(address _delegationPlugin) external;
 
     function setFtsoRewardPlugin(address _ftsoRewardPlugin) external;
+
+    function setAirdropPlugin(address _airdropPlugin) external;
 
     function setFAssetsRewardPlugin(address _fAssetRewardPlugin) external;
 

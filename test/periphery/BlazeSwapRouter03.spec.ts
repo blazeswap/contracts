@@ -103,7 +103,7 @@ describe('BlazeSwapRouter03', () => {
         }
       )
       const receipt = await tx.wait()
-      expect(receipt.gasUsed).to.be.within(306867, 306937)
+      expect(receipt.gasUsed).to.be.within(306827, 306897)
     })
   })
 

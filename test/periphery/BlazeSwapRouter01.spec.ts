@@ -348,7 +348,7 @@ describe('BlazeSwapRouter01', () => {
           constants.MaxUint256
         )
         const receipt = await tx.wait()
-        expect(receipt.gasUsed).to.be.within(105109, 105121)
+        expect(receipt.gasUsed).to.be.eq(105166)
       })
     })
 
@@ -487,7 +487,7 @@ describe('BlazeSwapRouter01', () => {
           }
         )
         const receipt = await tx.wait()
-        expect(receipt.gasUsed).to.be.within(207189, 207247)
+        expect(receipt.gasUsed).to.be.within(207214, 207284)
       })
     })
 

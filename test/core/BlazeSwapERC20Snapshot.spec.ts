@@ -45,7 +45,7 @@ describe('BlazeSwapERC20Snapshot', () => {
             ),
             keccak256(toUtf8Bytes(name)),
             keccak256(toUtf8Bytes('1')),
-            1,
+            14,
             token.address,
           ]
         )

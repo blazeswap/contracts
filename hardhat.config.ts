@@ -37,7 +37,7 @@ function getAccounts(chainId: number) {
 export default {
   networks: {
     hardhat: {
-      chainId: 1,
+      chainId: 14,
       hardfork: 'london',
       accounts: {
         accountsBalance: '10000000000000000000000000',

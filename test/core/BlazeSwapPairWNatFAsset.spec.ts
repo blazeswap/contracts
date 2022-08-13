@@ -8,6 +8,7 @@ import { pairWNatFAssetFixture, TEST_PROVIDERS } from './shared/fixtures'
 import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import {
   FAsset,
+  IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
   IBlazeSwapFAssetReward__factory,
@@ -49,6 +50,7 @@ describe('BlazeSwapPairWNatFAsset', () => {
   it('supportsInterface', async () => {
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(true)
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFAssetReward__factory.createInterface()))).to.eq(false) // created with allowFAssetPairWithoutPlugin
   })
 
@@ -61,9 +63,13 @@ describe('BlazeSwapPairWNatFAsset', () => {
       await manager.ftsoRewardPlugin(),
       wallet
     ).implementation()
+    const airdropAddress = await IBlazeSwapPlugin__factory.connect(
+      await manager.airdropPlugin(),
+      wallet
+    ).implementation()
     // pair created without fasset plugin
-    expect((await pair.facets()).length).to.eq(2)
-    expect(await pair.facetAddresses()).to.deep.eq([delegationAddress, ftsoRewardAddress])
+    expect((await pair.facets()).length).to.eq(3)
+    expect(await pair.facetAddresses()).to.deep.eq([delegationAddress, ftsoRewardAddress, airdropAddress])
   })
 
   it('type0 and type1', async () => {

@@ -12,13 +12,14 @@ import './BlazeSwapExecutorManager.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public rewardsFeeTo;
-    bool public rewardsFeeOn;
+    bool public ftsoRewardsFeeOn;
+    bool public fAssetRewardsFeeOn;
+    bool public airdropFeeOn;
 
     address public immutable wNat;
     address public immutable executorManager;
 
     IFtsoRewardManager[] private ftsoRewardManagers;
-    IFtsoRewardManager[] private ftsoRewardManagersTmp;
 
     address private assetManagerController;
 
@@ -27,6 +28,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public delegationPlugin;
     address public ftsoRewardPlugin;
     address public fAssetRewardPlugin;
+    address public airdropPlugin;
 
     constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
@@ -47,20 +49,36 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         }
     }
 
-    function updateFtsoRewardManagers() external {
+    function getMissingFtsoRewardManagersUpTo(
+        IFtsoRewardManager current,
+        IFtsoRewardManager lastSaved,
+        uint256 upTo
+    ) private view returns (IFtsoRewardManager[] memory extra) {
+        extra = new IFtsoRewardManager[](upTo + 1);
+        uint256 count;
+        extra[count] = current;
+        do {
+            count++;
+            require(count <= upTo, 'BlazeSwap: FTSO_REWARD_MANAGERS');
+            extra[count] = getPreviousFtsoRewardManager(extra[count - 1]);
+        } while (extra[count] != lastSaved && address(extra[count]) != address(0));
+        uint256 toDrop = extra.length - count;
+        if (toDrop > 0) {
+            assembly {
+                // reduce array length
+                mstore(extra, sub(mload(extra), toDrop))
+            }
+        }
+    }
+
+    function updateFtsoRewardManagers(uint256 upTo) external {
         IFtsoRewardManager lastSaved = ftsoRewardManagers[ftsoRewardManagers.length - 1];
         IFtsoRewardManager current = BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager());
         if (current != lastSaved) {
-            do {
-                ftsoRewardManagersTmp.push(current);
-                IFtsoRewardManager previous = getPreviousFtsoRewardManager(current);
-                if (previous == lastSaved || address(previous) == address(0)) break;
-                current = previous;
-            } while (true);
-            for (uint256 i = ftsoRewardManagersTmp.length; i > 0; i--) {
-                IFtsoRewardManager ftsoRewardManager = ftsoRewardManagersTmp[i - 1];
+            IFtsoRewardManager[] memory extra = getMissingFtsoRewardManagersUpTo(current, lastSaved, upTo);
+            for (uint256 i = extra.length; i > 0; i--) {
+                IFtsoRewardManager ftsoRewardManager = extra[i - 1];
                 ftsoRewardManagers.push(ftsoRewardManager);
-                ftsoRewardManagersTmp.pop();
                 emit AddFtsoRewardManager(address(ftsoRewardManager));
             }
         }
@@ -74,21 +92,15 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
             managers = ftsoRewardManagers;
         } else {
             // new ftso reward manager(s), handle up to 2 new
-            IFtsoRewardManager[] memory extra = new IFtsoRewardManager[](3);
-            uint256 count;
-            extra[count] = current;
-            do {
-                count++;
-                require(count < extra.length, 'BlazeSwap: FTSO_REWARD_MANAGERS');
-                extra[count] = getPreviousFtsoRewardManager(extra[count - 1]);
-            } while (extra[count] != lastSaved && address(extra[count]) != address(0));
+            IFtsoRewardManager[] memory extra = getMissingFtsoRewardManagersUpTo(current, lastSaved, 2);
             uint256 previousLen = ftsoRewardManagers.length;
-            managers = new IFtsoRewardManager[](previousLen + count);
+            uint256 extraLen = extra.length;
+            managers = new IFtsoRewardManager[](previousLen + extraLen);
             for (uint256 i; i < previousLen; i++) {
                 managers[i] = ftsoRewardManagers[i];
             }
-            for (uint256 i; i < count; i++) {
-                managers[previousLen + i] = extra[count - i - 1];
+            for (uint256 i; i < extraLen; i++) {
+                managers[previousLen + i] = extra[extraLen - i - 1];
             }
         }
     }
@@ -122,8 +134,16 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         rewardsFeeTo = _rewardsFeeTo;
     }
 
-    function setRewardsFeeOn(bool _rewardsFeeOn) external onlyConfigSetter {
-        rewardsFeeOn = _rewardsFeeOn;
+    function setFtsoRewardsFeeOn(bool _on) external onlyConfigSetter {
+        ftsoRewardsFeeOn = _on;
+    }
+
+    function setFAssetRewardsFeeOn(bool _on) external onlyConfigSetter {
+        fAssetRewardsFeeOn = _on;
+    }
+
+    function setAirdropFeeOn(bool _on) external onlyConfigSetter {
+        airdropFeeOn = _on;
     }
 
     function revertAlreadySet() internal pure {
@@ -142,6 +162,13 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         address impl = IBlazeSwapPlugin(_ftsoRewardPlugin).implementation();
         require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');
         ftsoRewardPlugin = _ftsoRewardPlugin;
+    }
+
+    function setAirdropPlugin(address _airdropPlugin) external onlyConfigSetter {
+        if (airdropPlugin != address(0)) revertAlreadySet();
+        address impl = IBlazeSwapPlugin(_airdropPlugin).implementation();
+        require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');
+        airdropPlugin = _airdropPlugin;
     }
 
     function getLatestAssetManagerController() public view returns (address controller) {
