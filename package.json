@@ -12,13 +12,10 @@
     "contracts",
     "!contracts/**/examples",
     "!contracts/**/test",
-    "artifacts/contracts",
-    "!artifacts/contracts/**/examples",
-    "!artifacts/contracts/**/test",
-    "!artifacts/contracts/**/*.dbg.json",
-    "typechain-types",
-    "!typechain-types/**/examples",
-    "!typechain-types/**/test"
+    "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/**/examples/**/*.json",
+    "!artifacts/contracts/**/test/**/*.json",
+    "!artifacts/contracts/**/*.dbg.json"
   ],
   "types": "./typechain-types/index.ts",
   "devDependencies": {
