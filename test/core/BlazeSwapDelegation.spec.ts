@@ -6,6 +6,10 @@ import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
 import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
+import BlazeSwapPair from '../../artifacts/contracts/core/BlazeSwapPair.sol/BlazeSwapPair.json'
+import BlazeSwapDelegation from '../../artifacts/contracts/core/BlazeSwapDelegation.sol/BlazeSwapDelegation.json'
+
+import { Coder } from 'abi-coder'
 
 import {
   IBlazeSwapDelegation,
@@ -340,6 +344,28 @@ describe('BlazeSwapDelegation', () => {
     expect(_delegationMode).to.eq(BigNumber.from('1'))
     expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
     expect(_bips).to.deep.eq([BigNumber.from('5000'), BigNumber.from('5000')])
+  })
+
+  it('changeProviders: flash attack', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(5), expandTo18Decimals(5))
+
+    // can remove in different blocks
+    await delegation.voteFor(TEST_PROVIDERS[1])
+    await expect(delegation.changeProviders([TEST_PROVIDERS[1], constants.AddressZero])).not.to.be.reverted
+    await expect(pair.transfer(pair.address, expandTo18Decimals(1))).not.to.be.reverted
+    await expect(pair.burn(other1.address)).not.to.be.reverted
+
+    // cannot remove in same transaction
+    const delegationCoder = new Coder(BlazeSwapDelegation.abi)
+    const pairCoder = new Coder(BlazeSwapPair.abi)
+    await expect(
+      pair.multicall([
+        delegationCoder.encodeFunction('voteFor', { provider: TEST_PROVIDERS[2] }),
+        delegationCoder.encodeFunction('changeProviders', { newProviders: [TEST_PROVIDERS[2], constants.AddressZero] }),
+        pairCoder.encodeFunction('transfer', { to: pair.address, value: expandTo18Decimals(1) }),
+        pairCoder.encodeFunction('burn', { to: other1.address }),
+      ])
+    ).to.be.revertedWith('BlazeSwap: FLASH_ATTACK')
   })
 
   it('withdrawRewardFees', async () => {
