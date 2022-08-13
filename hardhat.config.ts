@@ -55,7 +55,7 @@ export default {
     },
   },
   solidity: {
-    version: '0.8.15',
+    version: '0.8.16',
     settings: {
       metadata: {
         bytecodeHash: 'none',
