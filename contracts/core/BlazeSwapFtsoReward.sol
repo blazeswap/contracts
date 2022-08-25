@@ -51,8 +51,8 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         l.executorManager = IBlazeSwapExecutorManager(s.manager.executorManager());
     }
 
-    function applyFee(uint256 amount) private pure returns (uint256) {
-        return (amount * 981) / 1000; // 1.9% fee (cannot overflow)
+    function applyFee(uint256 amount, uint256 bips) private pure returns (uint256) {
+        return bips > 0 ? (amount * (100_00 - bips)) / 100_00 : amount; // cannot overflow, fee round up
     }
 
     function getActiveRewardEpochsExclusive(IFtsoManager ftsoManager)
@@ -69,17 +69,14 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         IFtsoManager ftsoManager,
         uint256 epoch,
         uint256 totalAmount,
-        bool rewardsFeeOn,
+        uint256 rewardsFeeBips,
         address beneficiary
     ) private view returns (uint256 amount) {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
         uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
         uint256 beneficiaryVotePower = IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlock);
         if (beneficiaryVotePower > 0 && votePower > 0) {
-            amount = totalAmount;
-            if (rewardsFeeOn) {
-                amount = applyFee(amount);
-            }
+            amount = applyFee(totalAmount, rewardsFeeBips);
             amount = (amount * beneficiaryVotePower) / votePower; // this cannot overflow
         }
     }
@@ -89,7 +86,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         IFtsoRewardManager[] memory ftsoRewardManagers = s.manager.getFtsoRewardManagers();
         uint256 epoch = ftsoManager.getCurrentRewardEpoch();
-        bool rewardsFeeOn = s.manager.ftsoRewardsFeeOn();
+        uint256 rewardsFeeBips = s.manager.ftsoRewardsFeeBips();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
         uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
         uint256 beneficiaryVotePower = (beneficiary != address(0))
@@ -107,9 +104,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
                     }
                 }
             }
-            if (rewardsFeeOn) {
-                amount = applyFee(amount);
-            }
+            amount = applyFee(amount, rewardsFeeBips);
             amount = (amount * beneficiaryVotePower) / votePower; // this cannot overflow
         }
     }
@@ -125,12 +120,12 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         )
     {
         IFtsoRewardManager[] memory ftsoRewardManagers;
-        bool rewardsFeeOn;
+        uint256 rewardsFeeBips;
         {
             // avoid stack too deep error
             BlazeSwapDelegationStorage.Layout storage s = BlazeSwapDelegationStorage.layout();
             ftsoRewardManagers = s.manager.getActiveFtsoRewardManagers();
-            rewardsFeeOn = s.manager.ftsoRewardsFeeOn();
+            rewardsFeeBips = s.manager.ftsoRewardsFeeBips();
         }
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         EpochsRange memory epochsRange = getActiveRewardEpochsExclusive(ftsoManager);
@@ -157,7 +152,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
                         ftsoManager,
                         epoch,
                         totalAmounts[count],
-                        rewardsFeeOn,
+                        rewardsFeeBips,
                         beneficiary
                     );
                 }
@@ -180,7 +175,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         IFtsoRewardManager[] memory ftsoRewardManagers = s.manager.getActiveFtsoRewardManagers();
-        bool rewardsFeeOn = s.manager.ftsoRewardsFeeOn();
+        uint256 rewardsFeeBips = s.manager.ftsoRewardsFeeBips();
         uint256 totalRewards;
         address payable rewardManagerAddress = BlazeSwapRewardLibrary.rewardManagerFor(address(this));
         for (uint256 i; i < epochs.length; i++) {
@@ -196,9 +191,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
             }
             if (epochRewards > 0) {
                 totalRewards += epochRewards;
-                if (rewardsFeeOn) {
-                    epochRewards = applyFee(epochRewards);
-                }
+                epochRewards = applyFee(epochRewards, rewardsFeeBips);
                 if (epochRewards > 0) {
                     l.pendingRewards[epoch] = BlazeSwapFtsoRewardStorage.FtsoReward(
                         votePowerBlock,

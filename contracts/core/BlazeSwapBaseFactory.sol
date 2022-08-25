@@ -11,6 +11,7 @@ contract BlazeSwapBaseFactory is IBlazeSwapBaseFactory {
     address[] public allPairs;
 
     constructor(address _manager) {
+        require(_manager != address(0), 'BlazeSwap: ZERO_ADDRESS');
         manager = _manager;
     }
 

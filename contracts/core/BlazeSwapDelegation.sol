@@ -287,7 +287,7 @@ contract BlazeSwapDelegation is
         uint256 extraBalance = balance - totalRewards;
         if (extraBalance > 0) {
             address feeTo = l.manager.rewardsFeeTo();
-            require(feeTo != address(0), 'BlazeSwap: ADDRESS_ZERO');
+            require(feeTo != address(0), 'BlazeSwap: ZERO_ADDRESS');
             BlazeSwapRewardManager(rewardManager).sendRewards(feeTo, extraBalance, false);
         }
     }

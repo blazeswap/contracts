@@ -180,7 +180,7 @@ contract WNAT is IWNat {
     }
 
     function delegate(address to, uint256 bips) external {
-        require(to != address(0), 'ADDRESS_ZERO');
+        require(to != address(0), 'ZERO_ADDRESS');
         require(bips != 0, 'BIPS_ZERO'); // not compliant, but we want to use undelegateAll
         Delegated[] storage ds = delegation[msg.sender];
         uint256 newBips;

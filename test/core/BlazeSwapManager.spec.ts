@@ -32,11 +32,11 @@ describe('BlazeSwapManager', () => {
     ftsoManager = FtsoManager__factory.connect(await fixture.priceSubmitter.getFtsoManager(), wallet)
   })
 
-  it('rewardsFeeTo, ftsoRewardsFeeOn', async () => {
+  it('rewardsFeeTo, ftsoRewardsFeeBips', async () => {
     expect(await manager.rewardsFeeTo()).to.eq(constants.AddressZero)
-    expect(await manager.ftsoRewardsFeeOn()).to.eq(false)
-    expect(await manager.fAssetRewardsFeeOn()).to.eq(false)
-    expect(await manager.airdropFeeOn()).to.eq(false)
+    expect(await manager.ftsoRewardsFeeBips()).to.eq(0)
+    expect(await manager.fAssetRewardsFeeBips()).to.eq(0)
+    expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
   it('setRewardsFeeTo', async () => {
@@ -45,28 +45,31 @@ describe('BlazeSwapManager', () => {
     expect(await manager.rewardsFeeTo()).to.eq(other.address)
   })
 
-  it('setFtsoRewardsFeeOn', async () => {
-    await expect(manager.connect(other).setFtsoRewardsFeeOn(true)).to.be.revertedWith('Configurable: FORBIDDEN')
-    await manager.setFtsoRewardsFeeOn(true)
-    expect(await manager.ftsoRewardsFeeOn()).to.eq(true)
-    await manager.setFtsoRewardsFeeOn(false)
-    expect(await manager.ftsoRewardsFeeOn()).to.eq(false)
+  it('setFtsoRewardsFeeBips', async () => {
+    await expect(manager.connect(other).setFtsoRewardsFeeBips(1_90)).to.be.revertedWith('Configurable: FORBIDDEN')
+    await expect(manager.setFtsoRewardsFeeBips(10_00)).to.be.revertedWith('BlazeSwap: INVALID_FEE')
+    await manager.setFtsoRewardsFeeBips(1_90)
+    expect(await manager.ftsoRewardsFeeBips()).to.eq(1_90)
+    await manager.setFtsoRewardsFeeBips(0)
+    expect(await manager.ftsoRewardsFeeBips()).to.eq(0)
   })
 
-  it('setFAssetRewardsFeeOn', async () => {
-    await expect(manager.connect(other).setFAssetRewardsFeeOn(true)).to.be.revertedWith('Configurable: FORBIDDEN')
-    await manager.setFAssetRewardsFeeOn(true)
-    expect(await manager.fAssetRewardsFeeOn()).to.eq(true)
-    await manager.setFAssetRewardsFeeOn(false)
-    expect(await manager.fAssetRewardsFeeOn()).to.eq(false)
+  it('setFAssetRewardsFeeBips', async () => {
+    await expect(manager.connect(other).setFAssetRewardsFeeBips(1_90)).to.be.revertedWith('Configurable: FORBIDDEN')
+    await expect(manager.setFAssetRewardsFeeBips(10_00)).to.be.revertedWith('BlazeSwap: INVALID_FEE')
+    await manager.setFAssetRewardsFeeBips(1_90)
+    expect(await manager.fAssetRewardsFeeBips()).to.eq(1_90)
+    await manager.setFAssetRewardsFeeBips(0)
+    expect(await manager.fAssetRewardsFeeBips()).to.eq(0)
   })
 
-  it('setAirdropFeeOn', async () => {
-    await expect(manager.connect(other).setAirdropFeeOn(true)).to.be.revertedWith('Configurable: FORBIDDEN')
-    await manager.setAirdropFeeOn(true)
-    expect(await manager.airdropFeeOn()).to.eq(true)
-    await manager.setAirdropFeeOn(false)
-    expect(await manager.airdropFeeOn()).to.eq(false)
+  it('setAirdropFeeBips', async () => {
+    await expect(manager.connect(other).setAirdropFeeBips(50)).to.be.revertedWith('Configurable: FORBIDDEN')
+    await expect(manager.setAirdropFeeBips(10_00)).to.be.revertedWith('BlazeSwap: INVALID_FEE')
+    await manager.setAirdropFeeBips(50)
+    expect(await manager.airdropFeeBips()).to.eq(50)
+    await manager.setAirdropFeeBips(0)
+    expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
   it('executorManager, wNat, getFtsoRewardManagers, getActiveFtsoRewardManagers, delegationPlugin, ftsoRewardPlugin, fAssetRewardPlugin, airdropPlugin, getLatestAssetManagerController, allowFAssetPairsWithoutPlugin', async () => {

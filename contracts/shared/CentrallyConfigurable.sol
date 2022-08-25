@@ -20,6 +20,7 @@ library CentrallyConfigurableStorage {
 
 abstract contract CentrallyConfigurable is ICentrallyConfigurable {
     function initCentrallyConfigurable(address _configurable) internal {
+        require(_configurable != address(0), 'CentrallyConfigurable: ZERO_ADDRESS');
         CentrallyConfigurableStorage.layout().configurable = IConfigurable(_configurable);
     }
 

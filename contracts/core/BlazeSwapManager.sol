@@ -12,9 +12,10 @@ import './BlazeSwapExecutorManager.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public rewardsFeeTo;
-    bool public ftsoRewardsFeeOn;
-    bool public fAssetRewardsFeeOn;
-    bool public airdropFeeOn;
+
+    uint256 public ftsoRewardsFeeBips;
+    uint256 public fAssetRewardsFeeBips;
+    uint256 public airdropFeeBips;
 
     address public immutable wNat;
     address public immutable executorManager;
@@ -134,16 +135,19 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         rewardsFeeTo = _rewardsFeeTo;
     }
 
-    function setFtsoRewardsFeeOn(bool _on) external onlyConfigSetter {
-        ftsoRewardsFeeOn = _on;
+    function setFtsoRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
+        require(_bips <= 5_00, 'BlazeSwap: INVALID_FEE');
+        ftsoRewardsFeeBips = _bips;
     }
 
-    function setFAssetRewardsFeeOn(bool _on) external onlyConfigSetter {
-        fAssetRewardsFeeOn = _on;
+    function setFAssetRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
+        require(_bips <= 5_00, 'BlazeSwap: INVALID_FEE');
+        fAssetRewardsFeeBips = _bips;
     }
 
-    function setAirdropFeeOn(bool _on) external onlyConfigSetter {
-        airdropFeeOn = _on;
+    function setAirdropFeeBips(uint256 _bips) external onlyConfigSetter {
+        require(_bips <= 5_00, 'BlazeSwap: INVALID_FEE');
+        airdropFeeBips = _bips;
     }
 
     function revertAlreadySet() internal pure {

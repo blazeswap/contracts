@@ -70,7 +70,7 @@ describe('BlazeSwapFtsoReward', () => {
   }
 
   function applyFee(amount: BigNumber) {
-    return amount.mul(981).div(1000)
+    return amount.mul(98_10).div(100_00)
   }
 
   it('initialize:forbiddenDelegated', async () => {
@@ -96,7 +96,7 @@ describe('BlazeSwapFtsoReward', () => {
     const expectedRewards = expandTo18Decimals(8 + 4).div(10)
     expect(await ftsoReward.accruingFtsoRewards(constants.AddressZero)).to.eq(expectedRewards)
     expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(expectedRewards.div(3))
-    await manager.setFtsoRewardsFeeOn(true)
+    await manager.setFtsoRewardsFeeBips(1_90)
     expect(await ftsoReward.accruingFtsoRewards(constants.AddressZero)).to.eq(applyFee(expectedRewards))
     expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(applyFee(expectedRewards).div(3))
   })
@@ -150,7 +150,7 @@ describe('BlazeSwapFtsoReward', () => {
     ])
     expect(totalAmounts).to.deep.eq([expandTo18Decimals(8 + 4).div(10), expandTo18Decimals(8 + 4).div(20)])
 
-    await manager.setFtsoRewardsFeeOn(true)
+    await manager.setFtsoRewardsFeeBips(1_90)
     ;[epochs, amounts, totalAmounts] = await ftsoReward.epochsWithUndistributedFtsoRewards(other.address)
     expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
     expect(amounts).to.deep.eq([
@@ -493,9 +493,9 @@ describe('BlazeSwapFtsoReward', () => {
     expect(await ftsoReward.claimedFtsoRewards(wallet.address, 2)).not.to.eq(BigNumber.from(0))
   })
 
-  it('ftsoRewardsFeeOn', async () => {
+  it('ftsoRewardsFeeBips', async () => {
     await manager.setRewardsFeeTo(other.address)
-    await manager.setFtsoRewardsFeeOn(true)
+    await manager.setFtsoRewardsFeeBips(1_90)
 
     await wNat.transfer(pair.address, expandTo18Decimals(100))
 
@@ -519,7 +519,7 @@ describe('BlazeSwapFtsoReward', () => {
 
   it('withdrawRewardFees', async () => {
     await manager.setRewardsFeeTo(other.address)
-    await manager.setFtsoRewardsFeeOn(true)
+    await manager.setFtsoRewardsFeeBips(1_90)
 
     await wNat.transfer(pair.address, expandTo18Decimals(100))
 
@@ -543,7 +543,7 @@ describe('BlazeSwapFtsoReward', () => {
 
   it('claimFtsoRewards:afterFee', async () => {
     await manager.setRewardsFeeTo(other.address)
-    await manager.setFtsoRewardsFeeOn(true)
+    await manager.setFtsoRewardsFeeBips(1_90)
 
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 

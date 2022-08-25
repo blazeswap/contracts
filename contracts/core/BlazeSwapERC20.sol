@@ -13,22 +13,33 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    bytes32 public immutable DOMAIN_SEPARATOR;
+    uint256 private immutable CACHED_CHAIN_ID;
+    bytes32 private immutable CACHED_DOMAIN_SEPARATOR;
+
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
     mapping(address => uint256) public nonces;
 
     constructor() {
-        uint256 chainId = block.chainid;
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
-                keccak256(bytes(name)),
-                keccak256(bytes('1')),
-                chainId,
-                address(this)
-            )
-        );
+        CACHED_CHAIN_ID = block.chainid;
+        CACHED_DOMAIN_SEPARATOR = createDomainSeparator();
+    }
+
+    function createDomainSeparator() internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+                    keccak256(bytes(name)),
+                    keccak256(bytes('1')),
+                    block.chainid,
+                    address(this)
+                )
+            );
+    }
+
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        return (CACHED_CHAIN_ID == block.chainid) ? CACHED_DOMAIN_SEPARATOR : createDomainSeparator();
     }
 
     function _beforeTokenTransfer(
@@ -65,7 +76,7 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
         address to,
         uint256 value
     ) private {
-        require(to != address(0), 'BlazeSwap: ADDRESS_ZERO');
+        require(to != address(0), 'BlazeSwap: ZERO_ADDRESS');
         _beforeTokenTransfer(from, to, value);
         balanceOf[from] -= value;
         balanceOf[to] += value;
@@ -110,7 +121,7 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 '\x19\x01',
-                DOMAIN_SEPARATOR,
+                DOMAIN_SEPARATOR(),
                 keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
             )
         );

@@ -20,17 +20,17 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function rewardsFeeTo() external view returns (address);
 
-    function setFtsoRewardsFeeOn(bool _on) external;
+    function setFtsoRewardsFeeBips(uint256 _bips) external;
 
-    function ftsoRewardsFeeOn() external view returns (bool);
+    function ftsoRewardsFeeBips() external view returns (uint256);
 
-    function setFAssetRewardsFeeOn(bool _on) external;
+    function setFAssetRewardsFeeBips(uint256 _bips) external;
 
-    function fAssetRewardsFeeOn() external view returns (bool);
+    function fAssetRewardsFeeBips() external view returns (uint256);
 
-    function setAirdropFeeOn(bool _on) external;
+    function setAirdropFeeBips(uint256 _bips) external;
 
-    function airdropFeeOn() external view returns (bool);
+    function airdropFeeBips() external view returns (uint256);
 
     function wNat() external view returns (address);
 

@@ -17,6 +17,7 @@ contract BlazeSwapBaseManager is IBlazeSwapBaseManager, Configurable {
     mapping(address => FeeRecipient) private tradingFeeSplit;
 
     constructor(address _configSetter) {
+        require(_configSetter != address(0), 'BlazeSwap: ZERO_ADDRESS');
         initConfigurable(_configSetter);
         mathContext = address(new BlazeSwapMath());
     }

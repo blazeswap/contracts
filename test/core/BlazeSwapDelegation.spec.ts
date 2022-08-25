@@ -375,7 +375,7 @@ describe('BlazeSwapDelegation', () => {
 
     await wNat.transfer(rewardManagerAddress, rewardAmount)
 
-    await expect(delegation.withdrawRewardFees()).to.be.revertedWith('BlazeSwap: ADDRESS_ZERO')
+    await expect(delegation.withdrawRewardFees()).to.be.revertedWith('BlazeSwap: ZERO_ADDRESS')
 
     await manager.setRewardsFeeTo(other1.address)
 

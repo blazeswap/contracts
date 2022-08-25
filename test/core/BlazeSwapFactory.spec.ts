@@ -69,7 +69,7 @@ describe('BlazeSwapFactory', () => {
   it('createPair:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(5963605)
+    expect(receipt.gasUsed).to.eq(6020410)
   })
 
   it('createPairWithFakeFAsset', async () => {
