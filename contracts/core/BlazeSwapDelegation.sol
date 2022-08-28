@@ -260,7 +260,7 @@ contract BlazeSwapDelegation is
         if (p.type1 != TokenType.Generic) {
             IVPToken(p.token1).changeProviders(newProviders);
         }
-        BlazeSwapRewardManager(payable(l.rewardManager)).changeProviders(newProviders);
+        BlazeSwapRewardManager(l.rewardManager).changeProviders(newProviders);
     }
 
     function changeProviders(address[2] calldata newProviders) external onlyDelegatedCall {
