@@ -23,7 +23,6 @@ contract FAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
         uint256 bips;
     }
     mapping(address => Delegated[]) public delegation;
-    mapping(address => uint256) public delegatedBips;
 
     struct Snapshot {
         uint256 id;
@@ -195,14 +194,13 @@ contract FAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
         }
         if (!replaced) {
             ds.push(Delegated(to, bips));
-            newBips = bips;
+            newBips += bips;
         }
         require(newBips <= 10000, '100%');
     }
 
     function undelegateAll() external {
         delete (delegation[msg.sender]);
-        delegatedBips[msg.sender] = 0;
     }
 
     function totalVotePowerAt(uint256 _blockNumber) external view returns (uint256) {

@@ -16,7 +16,6 @@ contract WNAT is IWNat {
         uint256 bips;
     }
     mapping(address => Delegated[]) public delegation;
-    mapping(address => uint256) public delegatedBips;
 
     struct Snapshot {
         uint256 id;
@@ -194,14 +193,13 @@ contract WNAT is IWNat {
         }
         if (!replaced) {
             ds.push(Delegated(to, bips));
-            newBips = bips;
+            newBips += bips;
         }
         require(newBips <= 10000, '100%');
     }
 
     function undelegateAll() external {
         delete (delegation[msg.sender]);
-        delegatedBips[msg.sender] = 0;
     }
 
     function totalVotePowerAt(uint256 _blockNumber) external view returns (uint256) {
