@@ -178,6 +178,25 @@ contract WNAT is IWNat {
         }
     }
 
+    function delegatesOfAt(address, uint256)
+        external
+        pure
+        returns (
+            address[] memory _delegateAddresses,
+            uint256[] memory _bips,
+            uint256 _count,
+            uint256 _delegationMode
+        )
+    {
+        // mock
+        _delegationMode = 1;
+        _count = 1;
+        _delegateAddresses = new address[](_count);
+        _bips = new uint256[](_count);
+        _delegateAddresses[0] = address(0);
+        _bips[0] = 100_00;
+    }
+
     function delegate(address to, uint256 bips) external {
         require(to != address(0), 'ZERO_ADDRESS');
         require(bips != 0, 'BIPS_ZERO'); // not compliant, but we want to use undelegateAll

@@ -26,6 +26,10 @@ interface IBlazeSwapDelegation {
 
     function currentProviders() external view returns (address[] memory);
 
+    function providersAtCurrentEpoch() external view returns (address[] memory);
+
+    function providersAtEpoch(uint256 epoch) external view returns (address[] memory);
+
     function mostVotedProviders() external view returns (address[2] memory);
 
     function changeProviders(address[2] memory ftsoProviders) external;

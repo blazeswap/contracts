@@ -368,6 +368,14 @@ describe('BlazeSwapDelegation', () => {
     ).to.be.revertedWith('BlazeSwap: FLASH_ATTACK')
   })
 
+  it('currentProviders, providersAtCurrentEpoch, providersAtEpoch', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(5), expandTo18Decimals(5))
+
+    expect(await delegation.currentProviders()).to.deep.eq([TEST_PROVIDERS[0]])
+    expect(await delegation.providersAtCurrentEpoch()).to.deep.eq([constants.AddressZero])
+    expect(await delegation.providersAtEpoch(1)).to.deep.eq([constants.AddressZero])
+  })
+
   it('withdrawRewardFees', async () => {
     const rewardAmount = expandTo18Decimals(2)
 

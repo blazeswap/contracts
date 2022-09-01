@@ -217,10 +217,25 @@ contract BlazeSwapDelegation is
         revert('BlazeSwap: INVALID_PROVIDERS');
     }
 
-    function currentProviders() external view returns (address[] memory) {
+    function currentProviders() external view returns (address[] memory delegatedProviders) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        (address[] memory delegatedProviders, , , ) = l.wNat.delegatesOf(l.rewardManager);
-        return delegatedProviders;
+        (delegatedProviders, , , ) = l.wNat.delegatesOf(l.rewardManager);
+    }
+
+    function providersAtEpoch(uint256 epoch, bool current) private view returns (address[] memory delegatedProviders) {
+        BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
+        IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
+        if (current) epoch = ftsoManager.getCurrentRewardEpoch();
+        uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
+        (delegatedProviders, , , ) = l.wNat.delegatesOfAt(l.rewardManager, votePowerBlock);
+    }
+
+    function providersAtCurrentEpoch() external view returns (address[] memory) {
+        return providersAtEpoch(0, true);
+    }
+
+    function providersAtEpoch(uint256 epoch) external view returns (address[] memory) {
+        return providersAtEpoch(epoch, false);
     }
 
     function checkMostVotedProviders(BlazeSwapDelegationStorage.Layout storage l, address[2] calldata newProviders)
@@ -293,7 +308,7 @@ contract BlazeSwapDelegation is
     }
 
     function pluginSelectors() private pure returns (bytes4[] memory s) {
-        s = new bytes4[](13);
+        s = new bytes4[](15);
         s[0] = IBlazeSwapDelegation.voteOf.selector;
         s[1] = IBlazeSwapDelegation.providerVotes.selector;
         s[2] = IBlazeSwapDelegation.providers.selector;
@@ -304,9 +319,11 @@ contract BlazeSwapDelegation is
         s[7] = IBlazeSwapDelegation.providersSubsetWithVotes.selector;
         s[8] = IBlazeSwapDelegation.voteFor.selector;
         s[9] = IBlazeSwapDelegation.currentProviders.selector;
-        s[10] = IBlazeSwapDelegation.mostVotedProviders.selector;
-        s[11] = IBlazeSwapDelegation.changeProviders.selector;
-        s[12] = IBlazeSwapDelegation.withdrawRewardFees.selector;
+        s[10] = IBlazeSwapDelegation.providersAtCurrentEpoch.selector;
+        s[11] = IBlazeSwapDelegation.providersAtEpoch.selector;
+        s[12] = IBlazeSwapDelegation.mostVotedProviders.selector;
+        s[13] = IBlazeSwapDelegation.changeProviders.selector;
+        s[14] = IBlazeSwapDelegation.withdrawRewardFees.selector;
     }
 
     function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {
