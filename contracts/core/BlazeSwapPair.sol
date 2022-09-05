@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import './BlazeSwapBasePair.sol';
 import './BlazeSwapERC20Snapshot.sol';
-import './BlazeSwapRewardManager.sol';
 import './BlazeSwapMulticall.sol';
 
 import './interfaces/flare/IFtsoManager.sol';

@@ -5,7 +5,6 @@ import { BigNumber } from 'ethers'
 import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress } from './shared/utilities'
 
-import BlazeSwapRewardManagerArtifact from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import {
   BlazeSwapRewardManager,
   BlazeSwapRewardManager__factory,
@@ -30,8 +29,7 @@ describe('BlazeSwapRewardManager', () => {
     ftsoManager = fixture.ftsoManager
     ftsoRewardManager = fixture.ftsoRewardManager
     wNat = fixture.wNat
-    const rewardManagerBytecode = BlazeSwapRewardManagerArtifact.bytecode
-    const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address, rewardManagerBytecode)
+    const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
     rewardManager = BlazeSwapRewardManager__factory.connect(rewardManagerAddress, wallet)
   })
 

@@ -46,7 +46,7 @@ export function getCreate2Address(
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)
 }
 
-export function getRewardManagerAddress(pairAddress: string, bytecode: string): string {
+export function getRewardManagerAddress(pairAddress: string): string {
   const createInputs = ['0xd694', pairAddress, '0x01']
   const sanitizedInputs = `0x${createInputs.map((i) => i.slice(2)).join('')}`
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)

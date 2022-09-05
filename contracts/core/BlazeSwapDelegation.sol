@@ -31,7 +31,7 @@ library BlazeSwapDelegationStorage {
         IBlazeSwapPair pair;
         IBlazeSwapManager manager;
         IWNat wNat;
-        address payable rewardManager;
+        IIBlazeSwapRewardManager rewardManager;
         mapping(address => address) providerDelegation; // delegator => provider
         mapping(address => uint256) providerVotes; // provider => votes
         address[] allProviders;
@@ -57,13 +57,13 @@ contract BlazeSwapDelegation is
 
     function initialize(address plugin) external onlyDelegatedCall {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        IBlazeSwapPair pair = IBlazeSwapPair(payable(address(this)));
+        IBlazeSwapPair pair = IBlazeSwapPair(address(this));
         l.pair = pair;
         IBlazeSwapManager manager = IBlazeSwapManager(pair.manager());
         l.manager = manager;
         IWNat wNat = IWNat(manager.wNat());
         l.wNat = wNat;
-        l.rewardManager = payable(new BlazeSwapRewardManager(wNat, manager));
+        l.rewardManager = new BlazeSwapRewardManager(wNat, manager);
         changeProviders(l, [IBlazeSwapDelegationPlugin(plugin).initialProvider(), address(0)]);
     }
 
@@ -219,7 +219,7 @@ contract BlazeSwapDelegation is
 
     function currentProviders() external view returns (address[] memory delegatedProviders) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        (delegatedProviders, , , ) = l.wNat.delegatesOf(l.rewardManager);
+        (delegatedProviders, , , ) = l.wNat.delegatesOf(address(l.rewardManager));
     }
 
     function providersAtEpoch(uint256 epoch, bool current) private view returns (address[] memory delegatedProviders) {
@@ -227,7 +227,7 @@ contract BlazeSwapDelegation is
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         if (current) epoch = ftsoManager.getCurrentRewardEpoch();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
-        (delegatedProviders, , , ) = l.wNat.delegatesOfAt(l.rewardManager, votePowerBlock);
+        (delegatedProviders, , , ) = l.wNat.delegatesOfAt(address(l.rewardManager), votePowerBlock);
     }
 
     function providersAtCurrentEpoch() external view returns (address[] memory) {
@@ -244,7 +244,7 @@ contract BlazeSwapDelegation is
     {
         if (newProviders[0] == address(0) || newProviders[0] == newProviders[1]) revertInvalidProviders();
         if (newProviders[1] == address(0) && l.allProviders.length != 1) revertInvalidProviders();
-        (address[] memory _delegateAddresses, , , ) = l.wNat.delegatesOf(l.rewardManager);
+        (address[] memory _delegateAddresses, , , ) = l.wNat.delegatesOf(address(l.rewardManager));
         uint256 oldTotal;
         for (uint256 i; i < _delegateAddresses.length; i++) {
             oldTotal += l.providerVotes[_delegateAddresses[i]];
@@ -275,7 +275,7 @@ contract BlazeSwapDelegation is
         if (p.type1 != TokenType.Generic) {
             IVPToken(p.token1).changeProviders(newProviders);
         }
-        BlazeSwapRewardManager(l.rewardManager).changeProviders(newProviders);
+        l.rewardManager.changeProviders(newProviders);
     }
 
     function changeProviders(address[2] calldata newProviders) external onlyDelegatedCall {
@@ -285,11 +285,10 @@ contract BlazeSwapDelegation is
         changeProviders(l, newProviders);
     }
 
-    function withdrawRewardFees() external lock {
+    function withdrawRewardFees() external lock returns (uint256 rewardFees) {
         address[] storage plugins = BlazeSwapPairStorage.layout().pluginImpls;
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        IWNat wNat = l.wNat; // gas savings
-        address payable rewardManager = l.rewardManager; // gas savings
+        IIBlazeSwapRewardManager rewardManager = l.rewardManager; // gas savings
         uint256 totalRewards;
         for (uint256 i = 1; i < plugins.length; i++) {
             bytes memory result = DelegateCallHelper.delegateAndCheckResult(
@@ -298,12 +297,12 @@ contract BlazeSwapDelegation is
             );
             totalRewards += abi.decode(result, (uint256));
         }
-        uint256 balance = wNat.balanceOf(rewardManager);
-        uint256 extraBalance = balance - totalRewards;
-        if (extraBalance > 0) {
+        uint256 balance = l.wNat.balanceOf(address(rewardManager));
+        rewardFees = balance - totalRewards;
+        if (rewardFees > 0) {
             address feeTo = l.manager.rewardsFeeTo();
             require(feeTo != address(0), 'BlazeSwap: ZERO_ADDRESS');
-            BlazeSwapRewardManager(rewardManager).sendRewards(feeTo, extraBalance, false);
+            rewardManager.sendRewards(feeTo, rewardFees, false);
         }
     }
 
@@ -323,7 +322,7 @@ contract BlazeSwapDelegation is
         s[11] = IBlazeSwapDelegation.providersAtEpoch.selector;
         s[12] = IBlazeSwapDelegation.mostVotedProviders.selector;
         s[13] = IBlazeSwapDelegation.changeProviders.selector;
-        s[14] = IBlazeSwapDelegation.withdrawRewardFees.selector;
+        s[14] = IIBlazeSwapDelegation.withdrawRewardFees.selector;
     }
 
     function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {

@@ -206,7 +206,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         // wrap FTSO rewards and send them to reward manager
         if (totalRewards > 0) {
             assert(rewardManagerAddress.balance >= totalRewards);
-            BlazeSwapRewardManager(rewardManagerAddress).wrapRewards();
+            IIBlazeSwapRewardManager(rewardManagerAddress).wrapRewards();
         }
     }
 
@@ -293,7 +293,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
             }
         }
         if (totalRewards > 0) {
-            BlazeSwapRewardManager(BlazeSwapRewardLibrary.rewardManagerFor(address(this))).sendRewards(
+            IIBlazeSwapRewardManager(BlazeSwapRewardLibrary.rewardManagerFor(address(this))).sendRewards(
                 to,
                 totalRewards,
                 !wrapped

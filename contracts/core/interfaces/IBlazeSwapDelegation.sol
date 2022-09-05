@@ -33,6 +33,4 @@ interface IBlazeSwapDelegation {
     function mostVotedProviders() external view returns (address[2] memory);
 
     function changeProviders(address[2] memory ftsoProviders) external;
-
-    function withdrawRewardFees() external;
 }

@@ -5,14 +5,11 @@ import { BigNumber, constants, Wallet } from 'ethers'
 import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
-import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import BlazeSwapFtsoReward from '../../artifacts/contracts/core/BlazeSwapFtsoReward.sol/BlazeSwapFtsoReward.json'
 
 import { Coder } from 'abi-coder'
 
 import {
-  IBlazeSwapDelegation,
-  IBlazeSwapDelegation__factory,
   IBlazeSwapFtsoReward,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
@@ -25,6 +22,8 @@ import {
   IWNat,
   FtsoRewardManager__factory,
   IBlazeSwapExecutorManager__factory,
+  IIBlazeSwapDelegation,
+  IIBlazeSwapDelegation__factory,
 } from '../../typechain-types'
 
 const { createFixtureLoader } = waffle
@@ -41,7 +40,7 @@ describe('BlazeSwapFtsoReward', () => {
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
-  let delegation: IBlazeSwapDelegation
+  let delegation: IIBlazeSwapDelegation
   let ftsoReward: IBlazeSwapFtsoReward
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
@@ -52,7 +51,7 @@ describe('BlazeSwapFtsoReward', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
+    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, wallet)
     ftsoReward = IBlazeSwapFtsoReward__factory.connect(pair.address, wallet)
   })
 
@@ -233,8 +232,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     const expectedRewards = expandTo18Decimals(1000 / 100) // 10
 
-    const bytecode = BlazeSwapRewardManager.bytecode
-    const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
     await expect(ftsoReward.distributeFtsoRewards([2]))
       .to.emit(ftsoReward, 'FtsoRewardsDistributed')
@@ -507,8 +505,7 @@ describe('BlazeSwapFtsoReward', () => {
     const expectedTotalRewards = expandTo18Decimals(100000)
     const expectedDistributedRewards = applyFee(expectedTotalRewards)
 
-    const bytecode = BlazeSwapRewardManager.bytecode
-    const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
     await expect(ftsoReward.distributeFtsoRewards([1]))
       .to.emit(ftsoReward, 'FtsoRewardsDistributed')
@@ -536,8 +533,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await expect(() => delegation.withdrawRewardFees()).to.changeTokenBalance(wNat, other, expectedRewardFees)
 
-    const bytecode = BlazeSwapRewardManager.bytecode
-    const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedDistributedRewards)
   })
 
@@ -566,8 +562,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoManager.setRewardEpochToExpireNext(2)
 
-    const bytecode = BlazeSwapRewardManager.bytecode
-    const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
     expect(await wNat.balanceOf(rewardManagerAddress)).to.gt(BigNumber.from('0'))
 

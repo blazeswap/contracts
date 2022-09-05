@@ -5,7 +5,6 @@ import { BigNumber, constants, Wallet } from 'ethers'
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
 
-import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import {
   IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
@@ -42,7 +41,7 @@ describe('BlazeSwapPairWNat', () => {
     token1 = fixture.token1
     pair = fixture.pair
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
-    rewardManagerAddress = getRewardManagerAddress(pair.address, BlazeSwapRewardManager.bytecode)
+    rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
 
   it('supportsInterface', async () => {

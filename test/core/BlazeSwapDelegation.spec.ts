@@ -5,7 +5,6 @@ import { BigNumber, constants, Wallet } from 'ethers'
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
-import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import BlazeSwapPair from '../../artifacts/contracts/core/BlazeSwapPair.sol/BlazeSwapPair.json'
 import BlazeSwapDelegation from '../../artifacts/contracts/core/BlazeSwapDelegation.sol/BlazeSwapDelegation.json'
 
@@ -18,6 +17,7 @@ import {
   IBlazeSwapPair,
   IBlazeSwapPlugin__factory,
   IERC20,
+  IIBlazeSwapDelegation__factory,
   IIBlazeSwapPluginImpl__factory,
   IWNat,
 } from '../../typechain-types'
@@ -44,7 +44,7 @@ describe('BlazeSwapDelegation', () => {
     token1 = fixture.token1
     pair = fixture.pair
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
-    rewardManagerAddress = getRewardManagerAddress(pair.address, BlazeSwapRewardManager.bytecode)
+    rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
 
   it('initialize:forbiddenDelegated', async () => {
@@ -377,16 +377,20 @@ describe('BlazeSwapDelegation', () => {
   })
 
   it('withdrawRewardFees', async () => {
+    const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, wallet)
+
     const rewardAmount = expandTo18Decimals(2)
 
-    await expect(delegation.withdrawRewardFees()).not.to.be.reverted
+    expect(await idelegation.callStatic.withdrawRewardFees()).to.be.eq(0)
+    await expect(idelegation.withdrawRewardFees()).not.to.be.reverted
 
     await wNat.transfer(rewardManagerAddress, rewardAmount)
 
-    await expect(delegation.withdrawRewardFees()).to.be.revertedWith('BlazeSwap: ZERO_ADDRESS')
+    await expect(idelegation.withdrawRewardFees()).to.be.revertedWith('BlazeSwap: ZERO_ADDRESS')
 
     await manager.setRewardsFeeTo(other1.address)
 
-    await expect(() => delegation.withdrawRewardFees()).to.changeTokenBalance(wNat, other1, rewardAmount)
+    expect(await idelegation.callStatic.withdrawRewardFees()).to.be.eq(rewardAmount)
+    await expect(() => idelegation.withdrawRewardFees()).to.changeTokenBalance(wNat, other1, rewardAmount)
   })
 })

@@ -5,10 +5,11 @@ import '../shared/libraries/TransferHelper.sol';
 import '../shared/ParentRelation.sol';
 import './interfaces/flare/IWNat.sol';
 import './interfaces/IBlazeSwapManager.sol';
+import './interfaces/IIBlazeSwapRewardManager.sol';
 import './libraries/BlazeSwapFlareLibrary.sol';
 import './libraries/Delegator.sol';
 
-contract BlazeSwapRewardManager is ParentRelation {
+contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
     using Delegator for IWNat;
 
     IWNat private immutable wNat;
