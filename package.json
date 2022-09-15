@@ -9,12 +9,8 @@
     "flare"
   ],
   "files": [
-    "contracts",
-    "!contracts/**/examples",
-    "!contracts/**/test",
-    "artifacts/contracts/**/*.json",
-    "!artifacts/contracts/**/examples/**/*.json",
-    "!artifacts/contracts/**/test/**/*.json",
+    "contracts/*/interfaces",
+    "artifacts/contracts/*/interfaces/**/*.json",
     "!artifacts/contracts/**/*.dbg.json"
   ],
   "types": "./typechain-types/index.ts",
