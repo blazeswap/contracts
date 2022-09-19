@@ -4,12 +4,18 @@ import { BigNumber, constants, utils } from 'ethers'
 import { ecsign } from 'ethereumjs-util'
 
 import { expandTo18Decimals, getApprovalDigest, increaseTime, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
+
+import BlazeSwapRouter from '../../artifacts/contracts/periphery/BlazeSwapRouter.sol/BlazeSwapRouter.json'
+
+import { Coder } from 'abi-coder'
+
 import { routerFixture } from './shared/fixtures'
 import {
   IBlazeSwapFactory,
   IBlazeSwapPair,
   IBlazeSwapRouter,
   IERC20,
+  IERC20Permit__factory,
   IWNat,
   RouterEventEmitter,
 } from '../../typechain-types'
@@ -348,7 +354,7 @@ describe('BlazeSwapRouter01', () => {
           constants.MaxUint256
         )
         const receipt = await tx.wait()
-        expect(receipt.gasUsed).to.be.eq(105229)
+        expect(receipt.gasUsed).to.be.eq(105197)
       })
     })
 
@@ -689,6 +695,51 @@ describe('BlazeSwapRouter01', () => {
           .to.emit(routerEventEmitter, 'Amounts')
           .withArgs([expectedSwapAmount, outputAmount])
       })
+    })
+
+    it('swap with multicall and selfPermit', async () => {
+      const token0Amount = expandTo18Decimals(5)
+      const token1Amount = expandTo18Decimals(10)
+      const swapAmount = expandTo18Decimals(1)
+      const expectedOutputAmount = BigNumber.from('1662497915624478906')
+
+      await addLiquidity(token0Amount, token1Amount)
+
+      const token0Permit = IERC20Permit__factory.connect(token0.address, wallet)
+      const nonce = await token0Permit.nonces(wallet.address)
+      const digest = await getApprovalDigest(
+        token0,
+        { owner: wallet.address, spender: router.address, value: swapAmount },
+        nonce,
+        constants.MaxUint256
+      )
+
+      const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
+
+      const coder = new Coder(BlazeSwapRouter.abi)
+      await expect(
+        router.multicall([
+          coder.encodeFunction('selfPermit', {
+            token: token0.address,
+            value: swapAmount,
+            deadline: constants.MaxUint256,
+            v,
+            r,
+            s,
+          }),
+          coder.encodeFunction('swapExactTokensForTokens', {
+            amountIn: swapAmount,
+            amountOutMin: 0,
+            path: [token0.address, token1.address],
+            to: wallet.address,
+            deadline: constants.MaxUint256,
+          }),
+        ])
+      )
+        .to.emit(token0, 'Approval')
+        .withArgs(wallet.address, router.address, swapAmount)
+        .to.emit(pair, 'Swap')
+        .withArgs(router.address, swapAmount, 0, 0, expectedOutputAmount, wallet.address)
     })
   })
 })

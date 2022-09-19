@@ -185,7 +185,7 @@ describe('BlazeSwapPairGeneric', () => {
     await increaseTime(provider, 1) // not really needed by hardhat
     const tx = await pair.swap(expectedOutputAmount, 0, wallet.address, '0x')
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(75738)
+    expect(receipt.gasUsed).to.eq(75731)
   })
 
   it('burn', async () => {

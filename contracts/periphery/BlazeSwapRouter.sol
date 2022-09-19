@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import '../core/interfaces/erc20/IERC20.sol';
+import '../core/interfaces/erc20/IERC20Permit.sol';
 import '../core/interfaces/IBlazeSwapFactory.sol';
 import '../core/interfaces/flare/IWNat.sol';
 import '../core/BlazeSwapMulticall.sol';
@@ -484,5 +485,16 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
 
     function getReserves(address tokenA, address tokenB) public view virtual override returns (uint256, uint256) {
         return BlazeSwapLibrary.getReserves(factory, tokenA, tokenB);
+    }
+
+    function selfPermit(
+        address token,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
     }
 }

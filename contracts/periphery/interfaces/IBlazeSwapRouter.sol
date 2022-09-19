@@ -160,6 +160,15 @@ interface IBlazeSwapRouter is IBlazeSwapMulticall {
 
     function getReserves(address tokenA, address tokenB) external view returns (uint256, uint256);
 
+    function selfPermit(
+        address token,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+
     function removeLiquidityNATSupportingFeeOnTransferTokens(
         address token,
         uint256 liquidity,
