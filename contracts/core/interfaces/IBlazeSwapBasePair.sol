@@ -5,7 +5,6 @@ pragma abicoder v2;
 import './erc20/IERC20.sol';
 import './erc20/IERC20Metadata.sol';
 import './erc20/IERC20Permit.sol';
-import './IBlazeSwapBasePair.sol';
 
 interface IBlazeSwapBasePair is IERC20, IERC20Metadata, IERC20Permit {
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
