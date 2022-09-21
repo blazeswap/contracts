@@ -24,11 +24,11 @@ interface IBlazeSwapDelegation {
 
     function voteFor(address provider) external;
 
-    function currentProviders() external view returns (address[] memory);
+    function currentProviders() external view returns (address[] memory, uint256[] memory);
 
-    function providersAtCurrentEpoch() external view returns (address[] memory);
+    function providersAtCurrentEpoch() external view returns (address[] memory, uint256[] memory);
 
-    function providersAtEpoch(uint256 epoch) external view returns (address[] memory);
+    function providersAtEpoch(uint256 epoch) external view returns (address[] memory, uint256[] memory);
 
     function mostVotedProviders(uint256 max) external view returns (address[] memory, uint256[] memory);
 

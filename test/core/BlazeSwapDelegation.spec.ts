@@ -251,7 +251,7 @@ describe('BlazeSwapDelegation', () => {
     expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[1]])
     expect(_bips).to.deep.eq([BigNumber.from('10000')])
 
-    expect(await delegation.currentProviders()).to.deep.eq([TEST_PROVIDERS[1]])
+    expect(await delegation.currentProviders()).to.deep.eq([[TEST_PROVIDERS[1]], [BigNumber.from(100_00)]])
   })
 
   it('changeProviders: 50% to two providers', async () => {
@@ -270,7 +270,10 @@ describe('BlazeSwapDelegation', () => {
     expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
     expect(_bips).to.deep.eq([BigNumber.from('5000'), BigNumber.from('5000')])
 
-    expect(await delegation.currentProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
+    expect(await delegation.currentProviders()).to.deep.eq([
+      [TEST_PROVIDERS[0], TEST_PROVIDERS[1]],
+      [BigNumber.from(50_00), BigNumber.from(50_00)],
+    ])
   })
 
   it('changeProviders: no providers', async () => {
@@ -410,9 +413,9 @@ describe('BlazeSwapDelegation', () => {
   it('currentProviders, providersAtCurrentEpoch, providersAtEpoch', async () => {
     await addLiquidity(wallet, expandTo18Decimals(5), expandTo18Decimals(5))
 
-    expect(await delegation.currentProviders()).to.deep.eq([TEST_PROVIDERS[0]])
-    expect(await delegation.providersAtCurrentEpoch()).to.deep.eq([constants.AddressZero])
-    expect(await delegation.providersAtEpoch(1)).to.deep.eq([constants.AddressZero])
+    expect(await delegation.currentProviders()).to.deep.eq([[TEST_PROVIDERS[0]], [BigNumber.from(100_00)]])
+    expect(await delegation.providersAtCurrentEpoch()).to.deep.eq([[constants.AddressZero], [BigNumber.from(100_00)]])
+    expect(await delegation.providersAtEpoch(1)).to.deep.eq([[constants.AddressZero], [BigNumber.from(100_00)]])
   })
 
   it('withdrawRewardFees', async () => {

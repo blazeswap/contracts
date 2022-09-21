@@ -223,24 +223,28 @@ contract BlazeSwapDelegation is
         return (p, v);
     }
 
-    function currentProviders() external view returns (address[] memory delegatedProviders) {
+    function currentProviders() external view returns (address[] memory delegatedProviders, uint256[] memory bips) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        (delegatedProviders, , , ) = l.wNat.delegatesOf(address(l.rewardManager));
+        (delegatedProviders, bips, , ) = l.wNat.delegatesOf(address(l.rewardManager));
     }
 
-    function providersAtEpoch(uint256 epoch, bool current) private view returns (address[] memory delegatedProviders) {
+    function providersAtEpoch(uint256 epoch, bool current)
+        private
+        view
+        returns (address[] memory delegatedProviders, uint256[] memory bips)
+    {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         if (current) epoch = ftsoManager.getCurrentRewardEpoch();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
-        (delegatedProviders, , , ) = l.wNat.delegatesOfAt(address(l.rewardManager), votePowerBlock);
+        (delegatedProviders, bips, , ) = l.wNat.delegatesOfAt(address(l.rewardManager), votePowerBlock);
     }
 
-    function providersAtCurrentEpoch() external view returns (address[] memory) {
+    function providersAtCurrentEpoch() external view returns (address[] memory, uint256[] memory) {
         return providersAtEpoch(0, true);
     }
 
-    function providersAtEpoch(uint256 epoch) external view returns (address[] memory) {
+    function providersAtEpoch(uint256 epoch) external view returns (address[] memory, uint256[] memory) {
         return providersAtEpoch(epoch, false);
     }
 
