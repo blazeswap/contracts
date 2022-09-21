@@ -5,10 +5,10 @@ pragma abicoder v2;
 enum TokenType {
     Generic,
     WNat,
-    FAsset
+    FlareAsset
 }
 
-enum FAssetSupport {
+enum FlareAssetSupport {
     None,
     Minimal,
     Full

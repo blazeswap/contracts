@@ -6,7 +6,7 @@ import './BlazeSwapBaseFactory.sol';
 import './BlazeSwapPair.sol';
 
 contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
-    mapping(address => bool) public isFAssetPairWithoutPlugin;
+    mapping(address => bool) public isFlareAssetPairWithoutPlugin;
 
     constructor(address _manager) BlazeSwapBaseFactory(_manager) {}
 
@@ -35,12 +35,12 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
                     p.addPlugin(m.airdropPlugin());
                 }
             }
-            if (type0 == TokenType.FAsset || type1 == TokenType.FAsset) {
-                FAssetSupport fAssetSupport = m.fAssetSupport();
-                if (fAssetSupport == FAssetSupport.Full) {
-                    p.addPlugin(m.fAssetRewardPlugin());
-                } else if (fAssetSupport == FAssetSupport.Minimal) {
-                    isFAssetPairWithoutPlugin[pair] = true;
+            if (type0 == TokenType.FlareAsset || type1 == TokenType.FlareAsset) {
+                FlareAssetSupport flareAssetSupport = m.flareAssetSupport();
+                if (flareAssetSupport == FlareAssetSupport.Full) {
+                    p.addPlugin(m.flareAssetRewardPlugin());
+                } else if (flareAssetSupport == FlareAssetSupport.Minimal) {
+                    isFlareAssetPairWithoutPlugin[pair] = true;
                 } else {
                     revert('BlazeSwap: FASSET_UNSUPPORTED');
                 }
@@ -48,11 +48,11 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
         }
     }
 
-    function upgradeFAssetPair(address pair) external {
+    function upgradeFlareAssetPair(address pair) external {
         IBlazeSwapManager m = IBlazeSwapManager(manager);
-        address plugin = m.fAssetRewardPlugin();
-        require(plugin != address(0) && isFAssetPairWithoutPlugin[pair], 'BlazeSwap: UPGRADE_NOT_NEEDED');
-        isFAssetPairWithoutPlugin[pair] = false;
+        address plugin = m.flareAssetRewardPlugin();
+        require(plugin != address(0) && isFlareAssetPairWithoutPlugin[pair], 'BlazeSwap: UPGRADE_NOT_NEEDED');
+        isFlareAssetPairWithoutPlugin[pair] = false;
         BlazeSwapPair(payable(pair)).addPlugin(plugin);
     }
 }

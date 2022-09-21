@@ -14,7 +14,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public rewardsFeeTo;
 
     uint256 public ftsoRewardsFeeBips;
-    uint256 public fAssetRewardsFeeBips;
+    uint256 public flareAssetRewardsFeeBips;
     uint256 public airdropFeeBips;
 
     address public immutable wNat;
@@ -24,11 +24,11 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     address private assetManagerController;
 
-    bool public allowFAssetPairsWithoutPlugin;
+    bool public allowFlareAssetPairsWithoutPlugin;
 
     address public delegationPlugin;
     address public ftsoRewardPlugin;
-    address public fAssetRewardPlugin;
+    address public flareAssetRewardPlugin;
     address public airdropPlugin;
 
     constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
@@ -140,9 +140,9 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         ftsoRewardsFeeBips = _bips;
     }
 
-    function setFAssetRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
+    function setFlareAssetRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
         require(_bips <= 5_00, 'BlazeSwap: INVALID_FEE');
-        fAssetRewardsFeeBips = _bips;
+        flareAssetRewardsFeeBips = _bips;
     }
 
     function setAirdropFeeBips(uint256 _bips) external onlyConfigSetter {
@@ -197,7 +197,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         return IAssetManagerController(_assetManagerController).assetManagerExists(_assetManager);
     }
 
-    function isFAsset(address token) private view returns (bool isFA) {
+    function isFlareAsset(address token) private view returns (bool isFA) {
         (bool success, bytes memory result) = token.staticcall(abi.encodeWithSignature('assetManager()'));
         if (success && result.length == 32) {
             address assetManager = abi.decode(result, (address));
@@ -221,7 +221,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     function getTokenType(address token) external view returns (TokenType tokenType) {
         if (isWNat(token)) tokenType = TokenType.WNat;
-        else if (isFAsset(token)) tokenType = TokenType.FAsset;
+        else if (isFlareAsset(token)) tokenType = TokenType.FlareAsset;
         else tokenType = TokenType.Generic;
     }
 
@@ -230,21 +230,21 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         assetManagerController = _assetManagerController;
     }
 
-    function setAllowFAssetPairsWithoutPlugin(bool _allowFAssetPairsWithoutPlugin) external onlyConfigSetter {
-        allowFAssetPairsWithoutPlugin = _allowFAssetPairsWithoutPlugin;
+    function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external onlyConfigSetter {
+        allowFlareAssetPairsWithoutPlugin = _allowFlareAssetPairsWithoutPlugin;
     }
 
-    function setFAssetsRewardPlugin(address _fAssetRewardPlugin) external onlyConfigSetter {
-        if (fAssetRewardPlugin != address(0)) revertAlreadySet();
-        address impl = IBlazeSwapPlugin(_fAssetRewardPlugin).implementation();
+    function setFlareAssetsRewardPlugin(address _flareAssetRewardPlugin) external onlyConfigSetter {
+        if (flareAssetRewardPlugin != address(0)) revertAlreadySet();
+        address impl = IBlazeSwapPlugin(_flareAssetRewardPlugin).implementation();
         require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');
-        fAssetRewardPlugin = _fAssetRewardPlugin;
-        allowFAssetPairsWithoutPlugin = false;
+        flareAssetRewardPlugin = _flareAssetRewardPlugin;
+        allowFlareAssetPairsWithoutPlugin = false;
     }
 
-    function fAssetSupport() external view returns (FAssetSupport) {
-        if (assetManagerController == address(0)) return FAssetSupport.None;
-        if (fAssetRewardPlugin != address(0)) return FAssetSupport.Full;
-        return allowFAssetPairsWithoutPlugin ? FAssetSupport.Minimal : FAssetSupport.None;
+    function flareAssetSupport() external view returns (FlareAssetSupport) {
+        if (assetManagerController == address(0)) return FlareAssetSupport.None;
+        if (flareAssetRewardPlugin != address(0)) return FlareAssetSupport.Full;
+        return allowFlareAssetPairsWithoutPlugin ? FlareAssetSupport.Minimal : FlareAssetSupport.None;
     }
 }

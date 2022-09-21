@@ -1,16 +1,16 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
-import { pairWNatFAssetFixture, TEST_PROVIDERS } from './shared/fixtures'
+import { pairWNatFlareAssetFixture, TEST_PROVIDERS } from './shared/fixtures'
 
 import {
-  FAsset,
+  FlareAsset,
   IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
-  IBlazeSwapFAssetReward__factory,
+  IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
   IBlazeSwapPair,
@@ -21,7 +21,7 @@ import {
 
 const { createFixtureLoader } = waffle
 
-describe('BlazeSwapPairWNatFAsset', () => {
+describe('BlazeSwapPairWNatFlareAsset', () => {
   const provider = waffle.provider
   const [wallet, other1, other2] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
@@ -30,18 +30,18 @@ describe('BlazeSwapPairWNatFAsset', () => {
   let wNat: IWNat
   let token0: IERC20
   let token1: IERC20
-  let fAsset: FAsset
+  let flareAsset: FlareAsset
   let pair: IBlazeSwapPair
   let delegation: IBlazeSwapDelegation
   let rewardManagerAddress: string
   beforeEach(async () => {
-    const fixture = await loadFixture(pairWNatFAssetFixture)
+    const fixture = await loadFixture(pairWNatFlareAssetFixture)
     manager = fixture.manager
     wNat = fixture.wNat
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    fAsset = ((await pair.type0()) == 2 ? token0 : token1) as FAsset
+    flareAsset = ((await pair.type0()) == 2 ? token0 : token1) as FlareAsset
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
     rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
@@ -50,7 +50,9 @@ describe('BlazeSwapPairWNatFAsset', () => {
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(true)
-    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFAssetReward__factory.createInterface()))).to.eq(false) // created with allowFAssetPairWithoutPlugin
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFlareAssetReward__factory.createInterface()))).to.eq(
+      false
+    ) // created with allowFlareAssetPairWithoutPlugin
   })
 
   it('facets', async () => {
@@ -66,7 +68,7 @@ describe('BlazeSwapPairWNatFAsset', () => {
       await manager.airdropPlugin(),
       wallet
     ).implementation()
-    // pair created without fasset plugin
+    // pair created without flareasset plugin
     expect((await pair.facets()).length).to.eq(3)
     expect(await pair.facetAddresses()).to.deep.eq([delegationAddress, ftsoRewardAddress, airdropAddress])
   })
@@ -85,7 +87,7 @@ describe('BlazeSwapPairWNatFAsset', () => {
       expect(_bips).to.deep.eq([BigNumber.from('10000')])
     }
     {
-      const { _delegateAddresses, _bips, _count, _delegationMode } = await fAsset.delegatesOf(pair.address)
+      const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset.delegatesOf(pair.address)
 
       expect(_count).to.eq(BigNumber.from('1'))
       expect(_delegationMode).to.eq(BigNumber.from('1'))
@@ -126,7 +128,7 @@ describe('BlazeSwapPairWNatFAsset', () => {
     }
 
     {
-      const { _delegateAddresses, _bips, _count, _delegationMode } = await fAsset.delegatesOf(pair.address)
+      const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset.delegatesOf(pair.address)
 
       expect(_count).to.eq(BigNumber.from('2'))
       expect(_delegationMode).to.eq(BigNumber.from('1'))

@@ -4,7 +4,7 @@ import { Wallet, providers } from 'ethers'
 import { expandTo18Decimals } from './utilities'
 
 import ERC20Test from '../../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
-import FAssetTest from '../../../artifacts/contracts/core/test/FAssetTest.sol/FAssetTest.json'
+import FlareAssetTest from '../../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
 import WNAT from '../../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
 import BlazeSwapBaseManager from '../../../artifacts/contracts/core/BlazeSwapBaseManager.sol/BlazeSwapBaseManager.json'
 import BlazeSwapManager from '../../../artifacts/contracts/core/BlazeSwapManager.sol/BlazeSwapManager.json'
@@ -210,20 +210,26 @@ export async function pairWNatFixture([wallet]: Wallet[], provider: providers.We
   }
 }
 
-export async function pairFAssetFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<PairFixture> {
+export async function pairFlareAssetFixture(
+  [wallet]: Wallet[],
+  provider: providers.Web3Provider
+): Promise<PairFixture> {
   const { manager, wNat, factory, priceSubmitter, distributionTreasury, ftsoManager, ftsoRewardManager, distribution } =
     await factoryFixture([wallet], provider)
   const assetManagerAddress = '0x1230000000000000000000000000000000000123'
   const controller = await deployContract(wallet, AssetManagerController)
   await controller.addAssetManager(assetManagerAddress)
   await manager.setAssetManagerController(controller.address)
-  await manager.setAllowFAssetPairsWithoutPlugin(true)
+  await manager.setAllowFlareAssetPairsWithoutPlugin(true)
 
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
   const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = (await deployContract(wallet, FAssetTest, [assetManagerAddress, expandTo18Decimals(10000)])) as IERC20
+  const tokenB = (await deployContract(wallet, FlareAssetTest, [
+    assetManagerAddress,
+    expandTo18Decimals(10000),
+  ])) as IERC20
 
   await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factory.getPair(tokenA.address, tokenB.address)
@@ -248,7 +254,7 @@ export async function pairFAssetFixture([wallet]: Wallet[], provider: providers.
   }
 }
 
-export async function pairWNatFAssetFixture(
+export async function pairWNatFlareAssetFixture(
   [wallet]: Wallet[],
   provider: providers.Web3Provider
 ): Promise<PairFixture> {
@@ -258,12 +264,15 @@ export async function pairWNatFAssetFixture(
   const controller = await deployContract(wallet, AssetManagerController)
   await controller.addAssetManager(assetManagerAddress)
   await manager.setAssetManagerController(controller.address)
-  await manager.setAllowFAssetPairsWithoutPlugin(true)
+  await manager.setAllowFlareAssetPairsWithoutPlugin(true)
 
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
-  const tokenA = (await deployContract(wallet, FAssetTest, [assetManagerAddress, expandTo18Decimals(10000)])) as IERC20
+  const tokenA = (await deployContract(wallet, FlareAssetTest, [
+    assetManagerAddress,
+    expandTo18Decimals(10000),
+  ])) as IERC20
   const tokenB = wNat as IERC20
   // provide WNAT supply
   await wNat.deposit({ value: expandTo18Decimals(10000) })

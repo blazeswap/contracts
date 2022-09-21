@@ -24,9 +24,9 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function ftsoRewardsFeeBips() external view returns (uint256);
 
-    function setFAssetRewardsFeeBips(uint256 _bips) external;
+    function setFlareAssetRewardsFeeBips(uint256 _bips) external;
 
-    function fAssetRewardsFeeBips() external view returns (uint256);
+    function flareAssetRewardsFeeBips() external view returns (uint256);
 
     function setAirdropFeeBips(uint256 _bips) external;
 
@@ -44,7 +44,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function airdropPlugin() external view returns (address);
 
-    function fAssetRewardPlugin() external view returns (address);
+    function flareAssetRewardPlugin() external view returns (address);
 
     function setAssetManagerController(address _assetManagerController) external;
 
@@ -52,9 +52,9 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function updateAssetManagerController() external;
 
-    function setAllowFAssetPairsWithoutPlugin(bool _allowFAssetPairsWithoutPlugin) external;
+    function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external;
 
-    function allowFAssetPairsWithoutPlugin() external view returns (bool);
+    function allowFlareAssetPairsWithoutPlugin() external view returns (bool);
 
     function setDelegationPlugin(address _delegationPlugin) external;
 
@@ -62,7 +62,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function setAirdropPlugin(address _airdropPlugin) external;
 
-    function setFAssetsRewardPlugin(address _fAssetRewardPlugin) external;
+    function setFlareAssetsRewardPlugin(address _flareAssetRewardPlugin) external;
 
-    function fAssetSupport() external view returns (FAssetSupport);
+    function flareAssetSupport() external view returns (FlareAssetSupport);
 }

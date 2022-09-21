@@ -7,7 +7,7 @@ import '../interfaces/erc20/IERC20Snapshot.sol';
 import '../interfaces/flare/IAsset.sol';
 import '../interfaces/flare/IVPToken.sol';
 
-contract FAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
+contract FlareAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
     address public immutable assetManager;
 
     string public name;

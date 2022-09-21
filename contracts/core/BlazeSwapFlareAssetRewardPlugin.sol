@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import './interfaces/IBlazeSwapFAssetRewardPlugin.sol';
-import './BlazeSwapFAssetReward.sol';
+import './interfaces/IBlazeSwapFlareAssetRewardPlugin.sol';
+import './BlazeSwapFlareAssetReward.sol';
 
-contract BlazeSwapFAssetRewardPlugin is IBlazeSwapFAssetRewardPlugin {
-    address public immutable implementation = address(new BlazeSwapFAssetReward());
+contract BlazeSwapFlareAssetRewardPlugin is IBlazeSwapFlareAssetRewardPlugin {
+    address public immutable implementation = address(new BlazeSwapFlareAssetReward());
 
     uint256 public immutable testValue1;
     string public testValue2;

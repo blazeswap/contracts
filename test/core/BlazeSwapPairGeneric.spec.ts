@@ -14,7 +14,7 @@ import { pairFixture, TEST_PROVIDERS } from './shared/fixtures'
 import {
   IBlazeSwapDelegation__factory,
   IBlazeSwapFactory,
-  IBlazeSwapFAssetReward__factory,
+  IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
   IBlazeSwapMulticall__factory,
@@ -373,7 +373,9 @@ describe('BlazeSwapPairGeneric', () => {
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapMulticall__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(false)
-    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFAssetReward__factory.createInterface()))).to.eq(false)
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFlareAssetReward__factory.createInterface()))).to.eq(
+      false
+    )
   })
 
   it('facets', async () => {

@@ -1,6 +1,6 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
@@ -9,7 +9,7 @@ import {
   IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
-  IBlazeSwapFAssetReward__factory,
+  IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
   IBlazeSwapPair,
@@ -48,7 +48,9 @@ describe('BlazeSwapPairWNat', () => {
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(true)
-    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFAssetReward__factory.createInterface()))).to.eq(false)
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFlareAssetReward__factory.createInterface()))).to.eq(
+      false
+    )
   })
 
   it('facets', async () => {
