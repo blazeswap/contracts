@@ -4,17 +4,19 @@ pragma solidity ^0.8.0;
 import '../interfaces/flare/IVPToken.sol';
 
 library Delegator {
-    function delegate(IVPToken token, address[2] memory newProviders) internal {
-        uint256 bips = (newProviders[1] != address(0)) ? 50_00 : 100_00;
-        for (uint256 i = 0; i < newProviders.length; i++) {
-            address provider = newProviders[i];
-            if (provider != address(0)) {
-                token.delegate(provider, bips);
-            }
+    function delegate(IVPToken token, address[] memory newProviders) internal {
+        uint256 len = newProviders.length;
+        uint256 bips = 100_00 / len;
+        require(bips > 0);
+        token.delegate(newProviders[0], 100_00 - bips * (len - 1));
+        for (uint256 i = 1; i < len; i++) {
+            token.delegate(newProviders[i], bips);
         }
+        (, , uint256 count, ) = token.delegatesOf(address(this));
+        require(count == newProviders.length, 'BlazeSwap: DUPLICATED_PROVIDERS');
     }
 
-    function changeProviders(IVPToken token, address[2] memory newProviders) internal {
+    function changeProviders(IVPToken token, address[] memory newProviders) internal {
         token.undelegateAll();
         delegate(token, newProviders);
     }

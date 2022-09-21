@@ -90,7 +90,7 @@ describe('BlazeSwapPairWNat', () => {
     expect(_bips).to.deep.eq([BigNumber.from('10000')])
 
     expect(await delegation.providersCount()).to.eq(BigNumber.from('0'))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([constants.AddressZero, constants.AddressZero])
+    expect(await delegation.mostVotedProviders(10)).to.deep.eq([[], []])
   })
 
   async function addLiquidity(minter: Wallet, tokenAmount: BigNumber, wNatAmount: BigNumber) {
@@ -109,7 +109,8 @@ describe('BlazeSwapPairWNat', () => {
     await delegation.connect(other1).voteFor(TEST_PROVIDERS[1])
     await delegation.connect(other2).voteFor(TEST_PROVIDERS[2])
 
-    await expect(delegation.changeProviders(await delegation.mostVotedProviders())).not.to.be.reverted
+    const [newProviders] = await delegation.mostVotedProviders(2)
+    await expect(delegation.changeProviders(newProviders)).not.to.be.reverted
 
     {
       const { _delegateAddresses, _bips, _count, _delegationMode } = await wNat.delegatesOf(pair.address)

@@ -64,7 +64,9 @@ contract BlazeSwapDelegation is
         IWNat wNat = IWNat(manager.wNat());
         l.wNat = wNat;
         l.rewardManager = new BlazeSwapRewardManager(wNat, manager);
-        changeProviders(l, [IBlazeSwapDelegationPlugin(plugin).initialProvider(), address(0)]);
+        address[] memory initialProviders = new address[](1);
+        initialProviders[0] = IBlazeSwapDelegationPlugin(plugin).initialProvider();
+        changeProviders(l, initialProviders);
     }
 
     function voteOf(address liquidityProvider) external view onlyDelegatedCall returns (address) {
@@ -193,28 +195,32 @@ contract BlazeSwapDelegation is
         }
     }
 
-    function mostVotedProviders() external view onlyDelegatedCall returns (address[2] memory) {
+    function mostVotedProviders(uint256 max)
+        external
+        view
+        onlyDelegatedCall
+        returns (address[] memory, uint256[] memory)
+    {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        address[2] memory p;
-        uint256[2] memory v;
-        for (uint256 i; i < l.allProviders.length; i++) {
+        uint256 allProvidersLen = l.allProviders.length;
+        uint256 len = Math.min(max, allProvidersLen);
+        address[] memory p = new address[](len);
+        uint256[] memory v = new uint256[](len);
+        for (uint256 i; i < allProvidersLen; i++) {
             address provider = l.allProviders[i];
             uint256 votes = l.providerVotes[provider];
-            if (votes > v[0] || votes > v[1]) {
-                if (v[0] <= v[1]) {
-                    p[0] = provider;
-                    v[0] = votes;
-                } else {
-                    p[1] = provider;
-                    v[1] = votes;
+            uint256 j;
+            while (j < len && votes <= v[j]) j++;
+            if (j < len) {
+                for (uint256 k = len - 1; k > j; k--) {
+                    p[k] = p[k - 1];
+                    v[k] = v[k - 1];
                 }
+                p[j] = provider;
+                v[j] = votes;
             }
         }
-        return p;
-    }
-
-    function revertInvalidProviders() private pure {
-        revert('BlazeSwap: INVALID_PROVIDERS');
+        return (p, v);
     }
 
     function currentProviders() external view returns (address[] memory delegatedProviders) {
@@ -238,25 +244,25 @@ contract BlazeSwapDelegation is
         return providersAtEpoch(epoch, false);
     }
 
-    function checkMostVotedProviders(BlazeSwapDelegationStorage.Layout storage l, address[2] calldata newProviders)
+    function checkMostVotedProviders(BlazeSwapDelegationStorage.Layout storage l, address[] calldata newProviders)
         private
         view
     {
-        if (newProviders[0] == address(0) || newProviders[0] == newProviders[1]) revertInvalidProviders();
-        if (newProviders[1] == address(0) && l.allProviders.length != 1) revertInvalidProviders();
+        uint256 len = newProviders.length;
+        require(len > 0, 'BlazeSwap: NO_PROVIDERS');
+        uint256 newTotal;
+        for (uint256 i; i < len; i++) {
+            require(newProviders[i] != address(0), 'BlazeSwap: ZERO_ADDRESS');
+            uint256 votes = l.providerVotes[newProviders[i]];
+            require(votes > 0, 'BlazeSwap: NO_VOTES');
+            newTotal += votes;
+        }
         (address[] memory _delegateAddresses, , , ) = l.wNat.delegatesOf(address(l.rewardManager));
         uint256 oldTotal;
         for (uint256 i; i < _delegateAddresses.length; i++) {
             oldTotal += l.providerVotes[_delegateAddresses[i]];
         }
-        uint256 newTotal;
-        for (uint256 i; i < newProviders.length; i++) {
-            if (newProviders[i] == address(0)) continue;
-            uint256 votes = l.providerVotes[newProviders[i]];
-            if (votes == 0) revertInvalidProviders();
-            newTotal += votes;
-        }
-        if (newTotal <= oldTotal) revertInvalidProviders();
+        require(newTotal > oldTotal, 'BlazeSwap: ILLEGAL_CHANGE');
     }
 
     function voteFor(address provider) external {
@@ -267,7 +273,7 @@ contract BlazeSwapDelegation is
         moveVotes(l, oldProvider, provider, balance);
     }
 
-    function changeProviders(BlazeSwapDelegationStorage.Layout storage l, address[2] memory newProviders) private {
+    function changeProviders(BlazeSwapDelegationStorage.Layout storage l, address[] memory newProviders) private {
         BlazeSwapPairStorage.Layout storage p = BlazeSwapPairStorage.layout();
         if (p.type0 != TokenType.Generic) {
             IVPToken(p.token0).changeProviders(newProviders);
@@ -278,7 +284,7 @@ contract BlazeSwapDelegation is
         l.rewardManager.changeProviders(newProviders);
     }
 
-    function changeProviders(address[2] calldata newProviders) external onlyDelegatedCall {
+    function changeProviders(address[] calldata newProviders) external onlyDelegatedCall {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         checkMostVotedProviders(l, newProviders);
         l.lastProvidersChange = BlazeSwapDelegationStorage.BlockAndOrigin(block.number, tx.origin);

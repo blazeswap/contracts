@@ -124,13 +124,22 @@ describe('BlazeSwapDelegation', () => {
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
     await addLiquidity(other1, expandTo18Decimals(2), expandTo18Decimals(2))
     await addLiquidity(other2, expandTo18Decimals(3), expandTo18Decimals(3))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([constants.AddressZero, constants.AddressZero])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([[], []])
     await delegation.voteFor(TEST_PROVIDERS[0])
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[0], constants.AddressZero])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[0]],
+      [expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY)],
+    ])
     await delegation.connect(other1).voteFor(TEST_PROVIDERS[1])
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[1], TEST_PROVIDERS[0]],
+      [expandTo18Decimals(2), expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY)],
+    ])
     await delegation.connect(other2).voteFor(TEST_PROVIDERS[2])
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[2], TEST_PROVIDERS[1]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[2], TEST_PROVIDERS[1]],
+      [expandTo18Decimals(3), expandTo18Decimals(2)],
+    ])
     const [providers, votes] = await delegation.providersWithVotes()
     expect(providers).to.deep.eq(TEST_PROVIDERS)
     expect(votes).to.deep.eq([
@@ -169,7 +178,10 @@ describe('BlazeSwapDelegation', () => {
     expect(await delegation.providersCount()).to.eq(BigNumber.from('3'))
     expect(await delegation.providerVotes(TEST_PROVIDERS[1])).to.eq(expandTo18Decimals(2))
     expect(await delegation.providerVotes(TEST_PROVIDERS[2])).to.eq(expandTo18Decimals(3))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[2], TEST_PROVIDERS[1]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[2], TEST_PROVIDERS[1]],
+      [expandTo18Decimals(3), expandTo18Decimals(2)],
+    ])
 
     // transfer LP tokens
     await pair.connect(other2).transfer(other1.address, expandTo18Decimals(3))
@@ -177,7 +189,10 @@ describe('BlazeSwapDelegation', () => {
     expect(await delegation.providersCount()).to.eq(BigNumber.from('2'))
     expect(await delegation.providerVotes(TEST_PROVIDERS[1])).to.eq(expandTo18Decimals(5))
     expect(await delegation.providerVotes(TEST_PROVIDERS[2])).to.eq(expandTo18Decimals(0))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[1], TEST_PROVIDERS[0]],
+      [expandTo18Decimals(5), expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY)],
+    ])
   })
 
   it('change votes', async () => {
@@ -193,7 +208,10 @@ describe('BlazeSwapDelegation', () => {
     await delegation.connect(other1).voteFor(TEST_PROVIDERS[0])
 
     expect(await delegation.providersCount()).to.eq(BigNumber.from('2'))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[2]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[2], TEST_PROVIDERS[0]],
+      [expandTo18Decimals(3), expandTo18Decimals(3).sub(MINIMUM_LIQUIDITY)],
+    ])
   })
 
   it('burn votes', async () => {
@@ -209,13 +227,14 @@ describe('BlazeSwapDelegation', () => {
     await removeLiquidity(other2, expandTo18Decimals(3))
 
     expect(await delegation.providersCount()).to.eq(BigNumber.from('3'))
-    expect(await delegation.mostVotedProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
+    expect(await delegation.mostVotedProviders(2)).to.deep.eq([
+      [TEST_PROVIDERS[1], TEST_PROVIDERS[0]],
+      [expandTo18Decimals(3), expandTo18Decimals(2).sub(MINIMUM_LIQUIDITY)],
+    ])
   })
 
   it('changeProviders: no votes', async () => {
-    await expect(delegation.changeProviders([TEST_PROVIDERS[0], constants.AddressZero])).to.be.revertedWith(
-      'BlazeSwap: INVALID_PROVIDERS'
-    )
+    await expect(delegation.changeProviders([TEST_PROVIDERS[0]])).to.be.revertedWith('BlazeSwap: NO_VOTES')
   })
 
   it('changeProviders: 100% to one provider', async () => {
@@ -223,7 +242,7 @@ describe('BlazeSwapDelegation', () => {
 
     await delegation.voteFor(TEST_PROVIDERS[1])
 
-    await expect(delegation.changeProviders([TEST_PROVIDERS[1], constants.AddressZero])).not.to.be.reverted
+    await expect(delegation.changeProviders([TEST_PROVIDERS[1]])).not.to.be.reverted
 
     const { _delegateAddresses, _bips, _count, _delegationMode } = await wNat.delegatesOf(rewardManagerAddress)
 
@@ -254,22 +273,42 @@ describe('BlazeSwapDelegation', () => {
     expect(await delegation.currentProviders()).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])
   })
 
-  it('changeProviders: both AddressZero', async () => {
-    await expect(delegation.changeProviders([constants.AddressZero, constants.AddressZero])).to.be.revertedWith(
-      'BlazeSwap: INVALID_PROVIDERS'
+  it('changeProviders: no providers', async () => {
+    await expect(delegation.changeProviders([])).to.be.revertedWith('BlazeSwap: NO_PROVIDERS')
+  })
+
+  it('changeProviders: AddressZero', async () => {
+    await expect(delegation.changeProviders([constants.AddressZero])).to.be.revertedWith('BlazeSwap: ZERO_ADDRESS')
+  })
+
+  it('changeProviders: duplicated addresses', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await delegation.voteFor(TEST_PROVIDERS[0])
+
+    await expect(delegation.changeProviders([TEST_PROVIDERS[0], TEST_PROVIDERS[0]])).to.be.revertedWith(
+      'BlazeSwap: DUPLICATED_PROVIDERS'
     )
   })
 
-  it('changeProviders: only one if multiple voted', async () => {
+  it('changeProviders: 3 providers', async () => {
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
     await addLiquidity(other1, expandTo18Decimals(2), expandTo18Decimals(2))
+    await addLiquidity(other2, expandTo18Decimals(3), expandTo18Decimals(3))
 
     await delegation.voteFor(TEST_PROVIDERS[0])
     await delegation.connect(other1).voteFor(TEST_PROVIDERS[1])
+    await delegation.connect(other2).voteFor(TEST_PROVIDERS[2])
 
-    await expect(delegation.changeProviders([TEST_PROVIDERS[1], constants.AddressZero])).to.be.revertedWith(
-      'BlazeSwap: INVALID_PROVIDERS'
-    )
+    await expect(delegation.changeProviders([TEST_PROVIDERS[0], TEST_PROVIDERS[1], TEST_PROVIDERS[2]])).not.to.be
+      .reverted
+
+    const { _delegateAddresses, _bips, _count, _delegationMode } = await wNat.delegatesOf(rewardManagerAddress)
+
+    expect(_count).to.eq(BigNumber.from('3'))
+    expect(_delegationMode).to.eq(BigNumber.from('1'))
+    expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[0], TEST_PROVIDERS[1], TEST_PROVIDERS[2]])
+    expect(_bips).to.deep.eq([BigNumber.from('3334'), BigNumber.from('3333'), BigNumber.from('3333')])
   })
 
   it('changeProviders: same providers', async () => {
@@ -282,7 +321,7 @@ describe('BlazeSwapDelegation', () => {
     await expect(delegation.changeProviders([TEST_PROVIDERS[0], TEST_PROVIDERS[1]])).not.to.be.reverted
     // same providers
     await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).to.be.revertedWith(
-      'BlazeSwap: INVALID_PROVIDERS'
+      'BlazeSwap: ILLEGAL_CHANGE'
     )
   })
 
@@ -298,7 +337,7 @@ describe('BlazeSwapDelegation', () => {
     await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).not.to.be.reverted
     // same vote power
     await expect(delegation.changeProviders([TEST_PROVIDERS[2], TEST_PROVIDERS[0]])).to.be.revertedWith(
-      'BlazeSwap: INVALID_PROVIDERS'
+      'BlazeSwap: ILLEGAL_CHANGE'
     )
   })
 
@@ -351,7 +390,7 @@ describe('BlazeSwapDelegation', () => {
 
     // can remove in different blocks
     await delegation.voteFor(TEST_PROVIDERS[1])
-    await expect(delegation.changeProviders([TEST_PROVIDERS[1], constants.AddressZero])).not.to.be.reverted
+    await expect(delegation.changeProviders([TEST_PROVIDERS[1]])).not.to.be.reverted
     await expect(pair.transfer(pair.address, expandTo18Decimals(1))).not.to.be.reverted
     await expect(pair.burn(other1.address)).not.to.be.reverted
 
@@ -361,7 +400,7 @@ describe('BlazeSwapDelegation', () => {
     await expect(
       pair.multicall([
         delegationCoder.encodeFunction('voteFor', { provider: TEST_PROVIDERS[2] }),
-        delegationCoder.encodeFunction('changeProviders', { newProviders: [TEST_PROVIDERS[2], constants.AddressZero] }),
+        delegationCoder.encodeFunction('changeProviders', { newProviders: [TEST_PROVIDERS[2]] }),
         pairCoder.encodeFunction('transfer', { to: pair.address, value: expandTo18Decimals(1) }),
         pairCoder.encodeFunction('burn', { to: other1.address }),
       ])
