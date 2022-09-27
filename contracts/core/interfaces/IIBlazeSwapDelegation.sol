@@ -11,5 +11,5 @@ interface IIBlazeSwapDelegation is IIBlazeSwapPluginImpl {
         uint256 amount
     ) external;
 
-    function withdrawRewardFees() external returns (uint256 rewardFees);
+    function withdrawRewardFees(bool wrapped) external returns (uint256 rewardFees);
 }

@@ -31,7 +31,7 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
             p.addPlugin(m.delegationPlugin());
             if (type0 == TokenType.WNat || type1 == TokenType.WNat) {
                 p.addPlugin(m.ftsoRewardPlugin());
-                if (block.chainid == 14) {
+                if (block.chainid == 14 || block.chainid == 114) {
                     p.addPlugin(m.airdropPlugin());
                 }
             }

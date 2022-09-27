@@ -4,12 +4,9 @@ pragma solidity ^0.8.0;
 import '../interfaces/erc20/IERC20.sol';
 import '../interfaces/erc20/IERC20Metadata.sol';
 import '../interfaces/erc20/IERC20Snapshot.sol';
-import '../interfaces/flare/IAsset.sol';
 import '../interfaces/flare/IVPToken.sol';
 
-contract FlareAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
-    address public immutable assetManager;
-
+contract FlareAsset is IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
     string public name;
     string public symbol;
     uint8 public immutable decimals;
@@ -35,13 +32,11 @@ contract FlareAsset is IAsset, IERC20, IERC20Metadata, IERC20Snapshot, IVPToken 
     constructor(
         string memory _name,
         string memory _symbol,
-        uint8 _decimals,
-        address _assetManager
+        uint8 _decimals
     ) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        assetManager = _assetManager;
     }
 
     function _mint(address to, uint256 value) internal {

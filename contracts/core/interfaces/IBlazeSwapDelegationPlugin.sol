@@ -8,4 +8,8 @@ interface IBlazeSwapDelegationPlugin is IBlazeSwapPlugin {
     function setInitialProvider(address _initialProvider) external;
 
     function initialProvider() external view returns (address);
+
+    function setMaxDelegatesByPercent(uint256 _maxDelegatesByPercent) external;
+
+    function maxDelegatesByPercent() external view returns (uint256);
 }

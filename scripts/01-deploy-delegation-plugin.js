@@ -5,6 +5,7 @@ async function main() {
   const initialProvider = getEnvParam('INITIAL_PROVIDER')
   const delegationPlugin = await deployContract('BlazeSwapDelegationPlugin', [manager.address])
   await delegationPlugin.setInitialProvider(initialProvider)
+  await delegationPlugin.setMaxDelegatesByPercent(2)
   await manager.setDelegationPlugin(delegationPlugin.address)
 }
 

@@ -7,7 +7,6 @@ import './IBlazeSwapBaseManager.sol';
 import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
-    event UpdateAssetManagerController(address assetManagerController);
     event AddFtsoRewardManager(address ftsoRewardManager);
 
     function updateFtsoRewardManagers(uint256 upTo) external;
@@ -46,11 +45,9 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function flareAssetRewardPlugin() external view returns (address);
 
-    function setAssetManagerController(address _assetManagerController) external;
+    function setFlareAssetRegistry(address _flareAssetRegistry) external;
 
-    function getLatestAssetManagerController() external view returns (address controller);
-
-    function updateAssetManagerController() external;
+    function flareAssetRegistry() external view returns (address registry);
 
     function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external;
 

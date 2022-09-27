@@ -63,7 +63,7 @@ export default {
       evmVersion: 'london',
       optimizer: {
         enabled: true,
-        runs: 8000,
+        runs: 10000,
       },
     },
   },

@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
-import { pairFlareAssetFixture, TEST_PROVIDERS } from './shared/fixtures'
+import { pairFlareAssetsFixture, TEST_PROVIDERS } from './shared/fixtures'
 
 import {
   FlareAsset,
@@ -21,7 +21,7 @@ import {
 
 const { createFixtureLoader } = waffle
 
-describe('BlazeSwapPairFlareAsset', () => {
+describe('BlazeSwapPairFlareAssets', () => {
   const provider = waffle.provider
   const [wallet, other1, other2] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
@@ -30,18 +30,20 @@ describe('BlazeSwapPairFlareAsset', () => {
   let wNat: IWNat
   let token0: IERC20
   let token1: IERC20
-  let flareAsset: FlareAsset
+  let flareAsset0: FlareAsset
+  let flareAsset1: FlareAsset
   let pair: IBlazeSwapPair
   let delegation: IBlazeSwapDelegation
   let rewardManagerAddress: string
   beforeEach(async () => {
-    const fixture = await loadFixture(pairFlareAssetFixture)
+    const fixture = await loadFixture(pairFlareAssetsFixture)
     manager = fixture.manager
     wNat = fixture.wNat
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    flareAsset = ((await pair.type0()) == 2 ? token0 : token1) as FlareAsset
+    flareAsset0 = token0 as FlareAsset
+    flareAsset1 = token1 as FlareAsset
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
     rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
@@ -66,24 +68,33 @@ describe('BlazeSwapPairFlareAsset', () => {
   })
 
   it('type0 and type1', async () => {
-    expect((await pair.type0()) + (await pair.type1())).to.eq(2)
+    expect((await pair.type0()) + (await pair.type1())).to.eq(4)
   })
 
   it('initial state', async () => {
-    const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset.delegatesOf(pair.address)
+    {
+      const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset0.delegatesOf(pair.address)
 
-    expect(_count).to.eq(BigNumber.from('1'))
-    expect(_delegationMode).to.eq(BigNumber.from('1'))
-    expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[0]])
-    expect(_bips).to.deep.eq([BigNumber.from('10000')])
+      expect(_count).to.eq(BigNumber.from('1'))
+      expect(_delegationMode).to.eq(BigNumber.from('1'))
+      expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[0]])
+      expect(_bips).to.deep.eq([BigNumber.from('10000')])
+    }
+    {
+      const { _delegateAddresses, _bips, _count } = await flareAsset1.delegatesOf(pair.address)
+
+      expect(_count).to.eq(BigNumber.from('0'))
+      expect(_delegateAddresses).to.deep.eq([])
+      expect(_bips).to.deep.eq([])
+    }
 
     expect(await delegation.providersCount()).to.eq(BigNumber.from('0'))
     expect(await delegation.mostVotedProviders(10)).to.deep.eq([[], []])
   })
 
-  async function addLiquidity(minter: Wallet, tokenAmount: BigNumber, wNatAmount: BigNumber) {
-    await token0.transfer(pair.address, wNat.address == token0.address ? wNatAmount : tokenAmount)
-    await token1.transfer(pair.address, wNat.address == token1.address ? wNatAmount : tokenAmount)
+  async function addLiquidity(minter: Wallet, token0Amount: BigNumber, token1Amount: BigNumber) {
+    await token0.transfer(pair.address, token0Amount)
+    await token1.transfer(pair.address, token1Amount)
     const minterPair = pair.connect(minter)
     await minterPair.mint(minter.address)
   }
@@ -100,14 +111,20 @@ describe('BlazeSwapPairFlareAsset', () => {
     const [newProviders] = await delegation.mostVotedProviders(2)
     await expect(delegation.changeProviders(newProviders)).not.to.be.reverted
 
-    // maxDelegatesByPercent == 1
     {
-      const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset.delegatesOf(pair.address)
+      const { _delegateAddresses, _bips, _count, _delegationMode } = await flareAsset0.delegatesOf(pair.address)
 
-      expect(_count).to.eq(BigNumber.from('1'))
+      expect(_count).to.eq(BigNumber.from('2'))
       expect(_delegationMode).to.eq(BigNumber.from('1'))
-      expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[2]])
-      expect(_bips).to.deep.eq([BigNumber.from('10000')])
+      expect(_delegateAddresses).to.deep.eq([TEST_PROVIDERS[2], TEST_PROVIDERS[1]])
+      expect(_bips).to.deep.eq([BigNumber.from('5000'), BigNumber.from('5000')])
+    }
+    {
+      const { _delegateAddresses, _bips, _count } = await flareAsset1.delegatesOf(pair.address)
+
+      expect(_count).to.eq(BigNumber.from('0'))
+      expect(_delegateAddresses).to.deep.eq([])
+      expect(_bips).to.deep.eq([])
     }
   })
 })

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import './interfaces/flare/IAssetManagerController.sol';
+import './interfaces/flare/IFlareAssetRegistry.sol';
 import './interfaces/flare/IFtsoRewardManager.sol';
 import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapPlugin.sol';
@@ -22,7 +22,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     IFtsoRewardManager[] private ftsoRewardManagers;
 
-    address private assetManagerController;
+    address public flareAssetRegistry;
 
     bool public allowFlareAssetPairsWithoutPlugin;
 
@@ -175,44 +175,8 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         airdropPlugin = _airdropPlugin;
     }
 
-    function getLatestAssetManagerController() public view returns (address controller) {
-        controller = assetManagerController;
-        while (controller != address(0)) {
-            address replacedBy = IAssetManagerController(controller).replacedBy();
-            if (replacedBy == address(0)) break;
-            controller = replacedBy;
-        }
-    }
-
-    function updateAssetManagerController() public {
-        address current = assetManagerController;
-        address latest = getLatestAssetManagerController();
-        if (latest != current) {
-            assetManagerController = latest;
-            emit UpdateAssetManagerController(latest);
-        }
-    }
-
-    function assetManagerExists(address _assetManagerController, address _assetManager) private view returns (bool) {
-        return IAssetManagerController(_assetManagerController).assetManagerExists(_assetManager);
-    }
-
-    function isFlareAsset(address token) private view returns (bool isFA) {
-        (bool success, bytes memory result) = token.staticcall(abi.encodeWithSignature('assetManager()'));
-        if (success && result.length == 32) {
-            address assetManager = abi.decode(result, (address));
-            if (assetManagerController == address(0)) {
-                // simplified check
-                isFA = assetManager != address(0);
-            } else {
-                // full verification
-                isFA = assetManagerExists(assetManagerController, assetManager);
-                if (!isFA) {
-                    // recheck in case the controller has been updated
-                    isFA = assetManagerExists(getLatestAssetManagerController(), assetManager);
-                }
-            }
-        }
+    function isFlareAsset(address token) private view returns (bool) {
+        return flareAssetRegistry != address(0) && IFlareAssetRegistry(flareAssetRegistry).isFlareAsset(token);
     }
 
     function isWNat(address token) private view returns (bool) {
@@ -225,9 +189,8 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         else tokenType = TokenType.Generic;
     }
 
-    function setAssetManagerController(address _assetManagerController) external onlyConfigSetter {
-        if (assetManagerController != address(0)) revertAlreadySet();
-        assetManagerController = _assetManagerController;
+    function setFlareAssetRegistry(address _flareAssetRegistry) external onlyConfigSetter {
+        flareAssetRegistry = _flareAssetRegistry;
     }
 
     function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external onlyConfigSetter {
@@ -243,7 +206,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     }
 
     function flareAssetSupport() external view returns (FlareAssetSupport) {
-        if (assetManagerController == address(0)) return FlareAssetSupport.None;
+        if (flareAssetRegistry == address(0)) return FlareAssetSupport.None;
         if (flareAssetRewardPlugin != address(0)) return FlareAssetSupport.Full;
         return allowFlareAssetPairsWithoutPlugin ? FlareAssetSupport.Minimal : FlareAssetSupport.None;
     }

@@ -5,6 +5,7 @@ import '../shared/libraries/TransferHelper.sol';
 import '../shared/ParentRelation.sol';
 import './interfaces/flare/IWNat.sol';
 import './interfaces/IBlazeSwapManager.sol';
+import './interfaces/IBlazeSwapDelegationPlugin.sol';
 import './interfaces/IIBlazeSwapRewardManager.sol';
 import './libraries/BlazeSwapFlareLibrary.sol';
 import './libraries/Delegator.sol';
@@ -23,11 +24,11 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
     receive() external payable {}
 
     function changeProviders(address[] calldata providers) external onlyParent {
-        wNat.changeProviders(providers);
+        wNat.changeProviders(providers, type(uint256).max);
     }
 
     function claimFtsoRewards(uint256[] calldata epochs) external returns (uint256 amount) {
-        IFtsoRewardManager[] memory ftsoRewardManagers = manager.getFtsoRewardManagers();
+        IFtsoRewardManager[] memory ftsoRewardManagers = manager.getActiveFtsoRewardManagers();
         for (uint256 i; i < ftsoRewardManagers.length; i++) {
             try
                 BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager()).claimReward(

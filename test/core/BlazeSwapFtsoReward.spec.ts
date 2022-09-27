@@ -51,7 +51,7 @@ describe('BlazeSwapFtsoReward', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, wallet)
+    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, other)
     ftsoReward = IBlazeSwapFtsoReward__factory.connect(pair.address, wallet)
   })
 
@@ -531,7 +531,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoReward.distributeFtsoRewards([1])
 
-    await expect(() => delegation.withdrawRewardFees()).to.changeTokenBalance(wNat, other, expectedRewardFees)
+    await expect(() => delegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedRewardFees)
 
     const rewardManagerAddress = getRewardManagerAddress(pair.address)
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedDistributedRewards)
@@ -552,7 +552,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
 
-    await delegation.withdrawRewardFees()
+    await delegation.withdrawRewardFees(true)
 
     await expect(() => ftsoReward.claimFtsoRewards(epochs, wallet.address, true)).to.changeTokenBalance(
       wNat,
@@ -566,7 +566,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     expect(await wNat.balanceOf(rewardManagerAddress)).to.gt(BigNumber.from('0'))
 
-    await delegation.withdrawRewardFees()
+    await delegation.withdrawRewardFees(true)
 
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(BigNumber.from('0'))
   })

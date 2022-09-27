@@ -10,11 +10,19 @@ contract BlazeSwapDelegationPlugin is IBlazeSwapDelegationPlugin, CentrallyConfi
 
     address public initialProvider;
 
+    uint256 public maxDelegatesByPercent;
+
     constructor(address _configurable) {
         initCentrallyConfigurable(_configurable);
     }
 
     function setInitialProvider(address _initialProvider) external onlyConfigSetter {
+        require(_initialProvider != address(0));
         initialProvider = _initialProvider;
+    }
+
+    function setMaxDelegatesByPercent(uint256 _maxDelegatesByPercent) external onlyConfigSetter {
+        require(_maxDelegatesByPercent > 0);
+        maxDelegatesByPercent = _maxDelegatesByPercent;
     }
 }
