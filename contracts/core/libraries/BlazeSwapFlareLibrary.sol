@@ -14,9 +14,11 @@ library BlazeSwapFlareLibrary {
         IDistributionTreasury(0x1000000000000000000000000000000000000004);
 
     function getDistribution() internal view returns (IDistributionToDelegators distribution) {
-        address curDistribution = distributionTreasury.selectedDistribution();
-        if (curDistribution != address(0) && curDistribution == distributionTreasury.distributionToDelegators()) {
-            distribution = IDistributionToDelegators(curDistribution);
+        if (block.chainid == 14 || block.chainid == 114) {
+            address curDistribution = distributionTreasury.selectedDistribution();
+            if (curDistribution != address(0) && curDistribution == distributionTreasury.distributionToDelegators()) {
+                distribution = IDistributionToDelegators(curDistribution);
+            }
         }
     }
 

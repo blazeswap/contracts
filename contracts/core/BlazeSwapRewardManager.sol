@@ -44,6 +44,14 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
         wrapRewards();
     }
 
+    function claimAirdrop(uint256 month) external returns (uint256 amount) {
+        IDistributionToDelegators distribution = BlazeSwapFlareLibrary.getDistribution();
+        if (address(distribution) != address(0)) {
+            amount = distribution.claim(payable(this), month);
+        }
+        wrapRewards();
+    }
+
     function wrapRewards() public {
         if (address(this).balance > 0) wNat.depositTo{value: address(this).balance}(address(this));
     }

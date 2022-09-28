@@ -20,6 +20,8 @@ library BlazeSwapAirdropStorage {
 
     struct Airdrop {
         uint256[] votePowerBlocks;
+        uint256[] wNatBalances;
+        uint256[] poolBalances;
         uint256 remainingAmount;
         uint256 remainingWeight;
     }
@@ -75,14 +77,18 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         uint256 airdropsFeeBips,
         address beneficiary
     ) private view returns (uint256 amount) {
+        IWNat wNat = BlazeSwapDelegationStorage.layout().wNat;
         uint256[] memory votePowerBlocks = distribution.votePowerBlockNumbers(month);
         uint256 votePower;
-        for (uint256 i; i < votePowerBlocks.length; i++) {
-            votePower += IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[i]);
-        }
         uint256 beneficiaryVotePower;
         for (uint256 i; i < votePowerBlocks.length; i++) {
-            beneficiaryVotePower += IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlocks[i]);
+            uint256 wNatBalance = wNat.balanceOfAt(address(this), votePowerBlocks[i]);
+            uint256 poolBalance = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[i]);
+            uint256 beneficiaryBalance = IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlocks[i]);
+            if (poolBalance > 0) {
+                beneficiaryVotePower += (beneficiaryBalance * wNatBalance) / poolBalance; // this cannot overflow
+                votePower += wNatBalance;
+            }
         }
         if (beneficiaryVotePower > 0 && votePower > 0) {
             amount = applyFee(totalAmount, airdropsFeeBips);
@@ -149,15 +155,23 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
             uint256 totalAmount = distribution.claim(rewardManagerAddress, month);
 
             if (totalAmount > 0) {
+                IWNat wNat = BlazeSwapDelegationStorage.layout().wNat;
                 uint256[] memory votePowerBlocks = distribution.votePowerBlockNumbers(month);
+                uint256 blocksLen = votePowerBlocks.length;
+                uint256[] memory wNatBalances = new uint256[](blocksLen);
+                uint256[] memory poolBalances = new uint256[](blocksLen);
                 uint256 votePower;
-                for (uint256 j; j < votePowerBlocks.length; j++) {
-                    votePower += IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[j]);
+                for (uint256 j; j < blocksLen; j++) {
+                    wNatBalances[j] = wNat.balanceOfAt(address(this), votePowerBlocks[j]);
+                    poolBalances[j] = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[j]);
+                    votePower += wNatBalances[j];
                 }
                 uint256 airdropAmount = applyFee(totalAmount, airdropsFeeBips);
                 if (airdropAmount > 0) {
                     l.pendingAirdrops[month] = BlazeSwapAirdropStorage.Airdrop(
                         votePowerBlocks,
+                        wNatBalances,
+                        poolBalances,
                         airdropAmount,
                         votePower
                     );
@@ -180,7 +194,13 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
             BlazeSwapAirdropStorage.Airdrop storage airdrop = l.pendingAirdrops[month];
             if (airdrop.remainingWeight > 0) {
                 for (uint256 j; j < airdrop.votePowerBlocks.length; j++) {
-                    weight += IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, airdrop.votePowerBlocks[j]);
+                    if (airdrop.poolBalances[j] > 0) {
+                        uint256 beneficiaryBalance = IBlazeSwapPair(address(this)).balanceOfAt(
+                            beneficiary,
+                            airdrop.votePowerBlocks[j]
+                        );
+                        weight += (beneficiaryBalance * airdrop.wNatBalances[j]) / airdrop.poolBalances[j]; // this cannot overflow
+                    }
                 }
                 amount = (airdrop.remainingAmount * weight) / airdrop.remainingWeight; // this cannot overflow
             }

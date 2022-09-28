@@ -5,14 +5,13 @@ import { BigNumber, constants, Wallet } from 'ethers'
 import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
-import BlazeSwapRewardManager from '../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import BlazeSwapAirdrop from '../../artifacts/contracts/core/BlazeSwapAirdrop.sol/BlazeSwapAirdrop.json'
 
 import { Coder } from 'abi-coder'
 
 import {
-  IBlazeSwapDelegation,
-  IBlazeSwapDelegation__factory,
+  IIBlazeSwapDelegation,
+  IIBlazeSwapDelegation__factory,
   IBlazeSwapManager,
   IBlazeSwapPair,
   IBlazeSwapPlugin__factory,
@@ -40,7 +39,7 @@ describe('BlazeSwapAirdrop', () => {
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
-  let delegation: IBlazeSwapDelegation
+  let delegation: IIBlazeSwapDelegation
   let airdrop: IBlazeSwapAirdrop
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
@@ -51,7 +50,7 @@ describe('BlazeSwapAirdrop', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
+    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, other)
     airdrop = IBlazeSwapAirdrop__factory.connect(pair.address, wallet)
   })
 
@@ -66,6 +65,11 @@ describe('BlazeSwapAirdrop', () => {
     const minterPair = pair.connect(minter)
     await minterPair.transfer(pair.address, amount)
     await minterPair.burn(minter.address)
+  }
+
+  async function addWNat(wNatAmount: BigNumber) {
+    await wNat.transfer(pair.address, wNatAmount)
+    await pair.sync()
   }
 
   function applyFee(amount: BigNumber) {
@@ -131,6 +135,22 @@ describe('BlazeSwapAirdrop', () => {
       expect(totalAmounts).to.deep.eq([BigNumber.from('100'), BigNumber.from('120')])
     })
 
+    it('monthsWithUndistributedAirdrop: different weights', async () => {
+      const b0 = (await provider.getBlock('latest')).number
+      await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
+      const b1 = (await provider.getBlock('latest')).number
+      await addWNat(expandTo18Decimals(1))
+      await addLiquidity(other, expandTo18Decimals(2), expandTo18Decimals(10))
+      const b2 = (await provider.getBlock('latest')).number
+      await distribution.setVotePowerBlockNumbers(0, [b0, b1, b2])
+      await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
+
+      const [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(other.address)
+      expect(months).to.deep.eq([BigNumber.from('0')])
+      expect(amounts).to.deep.eq([BigNumber.from('52')])
+      expect(totalAmounts).to.deep.eq([BigNumber.from('100')])
+    })
+
     it('airdrop lasts 36 months', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
 
@@ -154,8 +174,7 @@ describe('BlazeSwapAirdrop', () => {
       await distribution.setVotePowerBlockNumbers(1, [b0])
       await distribution.addAirdrop(pair.address, 1, airdropAmount, { value: airdropAmount })
 
-      const bytecode = BlazeSwapRewardManager.bytecode
-      const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+      const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
       await expect(airdrop.distributeAirdrop(0)).not.to.be.reverted
 
@@ -181,6 +200,24 @@ describe('BlazeSwapAirdrop', () => {
       const { months, amounts } = await airdrop.monthsWithUnclaimedAirdrop(other.address)
       expect(months).to.deep.eq([BigNumber.from('0'), BigNumber.from('1')])
       expect(amounts).to.deep.eq([BigNumber.from('50'), BigNumber.from('160')])
+    })
+
+    it('monthsWithUnclaimedAirdrop: different weights', async () => {
+      const b0 = (await provider.getBlock('latest')).number
+      await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
+      await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
+      const b1 = (await provider.getBlock('latest')).number
+      await addWNat(expandTo18Decimals(2))
+      await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(5))
+      const b2 = (await provider.getBlock('latest')).number
+      await distribution.setVotePowerBlockNumbers(0, [b0, b1, b2])
+      await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
+
+      await airdrop.distributeAirdrop(0)
+
+      const { months, amounts } = await airdrop.monthsWithUnclaimedAirdrop(other.address)
+      expect(months).to.deep.eq([BigNumber.from('0')])
+      expect(amounts).to.deep.eq([BigNumber.from('60')])
     })
 
     it('claimAirdrops:native', async () => {
@@ -389,8 +426,7 @@ describe('BlazeSwapAirdrop', () => {
 
       const expectedDistributedAirdrop = applyFee(totalAirdrop)
 
-      const bytecode = BlazeSwapRewardManager.bytecode
-      const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+      const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
       await expect(airdrop.distributeAirdrop(0))
         .to.emit(airdrop, 'AirdropDistributed')
@@ -413,10 +449,9 @@ describe('BlazeSwapAirdrop', () => {
 
       await airdrop.distributeAirdrop(0)
 
-      await expect(() => delegation.withdrawRewardFees()).to.changeTokenBalance(wNat, other, expectedAirdropFees)
+      await expect(() => delegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedAirdropFees)
 
-      const bytecode = BlazeSwapRewardManager.bytecode
-      const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+      const rewardManagerAddress = getRewardManagerAddress(pair.address)
       expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedDistributedAirdrop)
     })
 
@@ -433,7 +468,7 @@ describe('BlazeSwapAirdrop', () => {
 
       const { months, amounts } = await airdrop.monthsWithUnclaimedAirdrop(wallet.address)
 
-      await delegation.withdrawRewardFees()
+      await delegation.withdrawRewardFees(true)
 
       await expect(() => airdrop.claimAirdrops(months, wallet.address, true)).to.changeTokenBalance(
         wNat,
@@ -443,12 +478,11 @@ describe('BlazeSwapAirdrop', () => {
 
       await distribution.setMonthToExpireNext(1)
 
-      const bytecode = BlazeSwapRewardManager.bytecode
-      const rewardManagerAddress = getRewardManagerAddress(pair.address, bytecode)
+      const rewardManagerAddress = getRewardManagerAddress(pair.address)
 
       expect(await wNat.balanceOf(rewardManagerAddress)).to.gt(BigNumber.from('0'))
 
-      await delegation.withdrawRewardFees()
+      await delegation.withdrawRewardFees(true)
 
       expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(BigNumber.from('0'))
     })

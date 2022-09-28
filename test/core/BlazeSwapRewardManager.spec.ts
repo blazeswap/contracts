@@ -8,6 +8,8 @@ import { expandTo18Decimals, getRewardManagerAddress } from './shared/utilities'
 import {
   BlazeSwapRewardManager,
   BlazeSwapRewardManager__factory,
+  DistributionToDelegators,
+  DistributionTreasury,
   FtsoManager,
   FtsoRewardManager,
   IWNat,
@@ -22,12 +24,16 @@ describe('BlazeSwapRewardManager', () => {
 
   let ftsoManager: FtsoManager
   let ftsoRewardManager: FtsoRewardManager
+  let distributionTreasury: DistributionTreasury
+  let distribution: DistributionToDelegators
   let wNat: IWNat
   let rewardManager: BlazeSwapRewardManager
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
     ftsoManager = fixture.ftsoManager
     ftsoRewardManager = fixture.ftsoRewardManager
+    distributionTreasury = fixture.distributionTreasury
+    distribution = fixture.distribution
     wNat = fixture.wNat
     const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
     rewardManager = BlazeSwapRewardManager__factory.connect(rewardManagerAddress, wallet)
@@ -57,5 +63,21 @@ describe('BlazeSwapRewardManager', () => {
     const expectedRewards = expandTo18Decimals(10).div(1000) // 0.01
 
     await expect(() => rewardManager.claimFtsoRewards([1])).to.changeTokenBalance(wNat, rewardManager, expectedRewards)
+  })
+
+  it('claimAirdrop', async () => {
+    await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+    await distribution.addAirdrop(rewardManager.address, 0, 100, { value: 100 })
+
+    await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, BigNumber.from('0'))
+    await expect(rewardManager.claimAirdrop(0)).not.to.be.reverted
+
+    await distributionTreasury.switchToDistributionToDelegators()
+
+    const expectedAmount = BigNumber.from('100')
+
+    expect(await distribution.getClaimableAmountOf(rewardManager.address, 0)).to.eq(expectedAmount)
+
+    await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, expectedAmount)
   })
 })

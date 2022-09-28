@@ -7,6 +7,8 @@ interface IIBlazeSwapRewardManager {
 
     function claimFtsoRewards(uint256[] calldata epochs) external returns (uint256 amount);
 
+    function claimAirdrop(uint256 month) external returns (uint256 amount);
+
     function wrapRewards() external;
 
     function sendRewards(address to, uint256 amount, bool unwrap) external;
