@@ -10,6 +10,7 @@
   ],
   "files": [
     "contracts/*/interfaces",
+    "artifacts/contracts/IgnoreMe.sol/IgnoreMe.json",
     "artifacts/contracts/*/interfaces/**/*.json",
     "!artifacts/contracts/**/*.dbg.json"
   ],
