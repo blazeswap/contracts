@@ -17,18 +17,13 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
-
-function getAccounts(chainId: number) {
-  let key
-  switch (chainId) {
-    case 16:
-      key = process.env.COSTON_DEPLOYER_PRIVATE_KEY
-      break
-    case 19:
-      key = process.env.SONGBIRD_DEPLOYER_PRIVATE_KEY
-      break
-  }
+function getAccounts() {
+  const key = process.env.DEPLOYER_PRIVATE_KEY
   return [key ?? '0x0000000000000000000000000000000000000000000000000000000000000000']
+}
+
+function getUrl(network: string) {
+  return `https://${network}-api.flare.network/ext/bc/C/rpc`
 }
 
 /**
@@ -44,14 +39,24 @@ export default {
       },
     },
     coston: {
-      url: 'https://coston-api.flare.network/ext/bc/C/rpc',
+      url: getUrl('coston'),
       chainId: 16,
-      accounts: getAccounts(16),
+      accounts: getAccounts(),
+    },
+    coston2: {
+      url: getUrl('coston2'),
+      chainId: 114,
+      accounts: getAccounts(),
     },
     songbird: {
-      url: 'https://songbird.towolabs.com/rpc',
+      url: getUrl('songbird'),
       chainId: 19,
-      accounts: getAccounts(19),
+      accounts: getAccounts(),
+    },
+    flare: {
+      url: getUrl('flare'),
+      chainId: 14,
+      accounts: getAccounts(),
     },
   },
   solidity: {

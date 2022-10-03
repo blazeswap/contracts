@@ -1,9 +1,10 @@
 const hre = require('hardhat')
+const path = require('path')
 
-require('dotenv').config()
+require('dotenv').config({ path: path.resolve(process.cwd(), '.env-' + hre.network.name) })
 
-module.exports.getEnvParam = function (suffix) {
-  return process.env[`${hre.network.name.toUpperCase()}_${suffix}`]
+module.exports.getEnvParam = function (key) {
+  return process.env[`${key}`]
 }
 
 module.exports.deployContract = async function (name, params) {
