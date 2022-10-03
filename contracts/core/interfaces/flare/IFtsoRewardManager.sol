@@ -7,6 +7,8 @@ interface IFtsoRewardManager {
 
     function wNat() external view returns (address);
 
+    function getRewardEpochToExpireNext() external view returns (uint256);
+
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (uint256[] memory _epochIds);
 
     function getStateOfRewards(address _beneficiary, uint256 _rewardEpoch)
@@ -23,7 +25,7 @@ interface IFtsoRewardManager {
         external
         returns (uint256 _rewardAmount);
 
-    function oldFtsoRewardManager() external view returns (address);
+    function oldFtsoRewardManager() external view returns (address); // not currently available on Songbird
 
     function getUnclaimedReward(uint256 _rewardEpoch, address _dataProvider)
         external

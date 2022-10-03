@@ -60,7 +60,13 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         view
         returns (EpochsRange memory epochsRange)
     {
-        uint256 firstActiveEpoch = ftsoManager.getRewardEpochToExpireNext();
+        uint256 firstActiveEpoch;
+        try ftsoManager.getRewardEpochToExpireNext() returns (uint256 epoch) {
+            firstActiveEpoch = epoch;
+        } catch {
+            // FtsoManagerV1 without getRewardEpochToExpireNext
+            firstActiveEpoch = IFtsoRewardManager(ftsoManager.rewardManager()).getRewardEpochToExpireNext();
+        }
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
         epochsRange = EpochsRange(firstActiveEpoch, currentEpoch, currentEpoch - firstActiveEpoch);
     }

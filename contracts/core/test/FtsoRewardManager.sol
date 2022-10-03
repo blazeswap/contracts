@@ -40,6 +40,10 @@ contract FtsoRewardManager is IFtsoRewardManager {
         rewards[_beneficiary].push(Reward(_epochId, (balance * _bips) / 100_00, false));
     }
 
+    function getRewardEpochToExpireNext() external view returns (uint256) {
+        return ftsoManager.getRewardEpochToExpireNext();
+    }
+
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (uint256[] memory _epochIds) {
         uint256 nextEpochToExpire = ftsoManager.getRewardEpochToExpireNext();
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();

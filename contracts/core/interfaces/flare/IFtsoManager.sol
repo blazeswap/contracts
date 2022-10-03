@@ -9,7 +9,7 @@ interface IFtsoManager {
 
     function getRewardEpochVotePowerBlock(uint256 _rewardEpoch) external view returns (uint256);
 
-    function getRewardEpochToExpireNext() external view returns (uint256);
+    function getRewardEpochToExpireNext() external view returns (uint256); // not currently available on Songbird
 
     function rewardEpochDurationSeconds() external view returns (uint256);
 
