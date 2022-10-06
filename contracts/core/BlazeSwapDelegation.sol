@@ -274,7 +274,7 @@ contract BlazeSwapDelegation is
         for (uint256 i; i < _delegateAddresses.length; i++) {
             oldTotal += l.providerVotes[_delegateAddresses[i]];
         }
-        require(newTotal > oldTotal, 'BlazeSwap: ILLEGAL_CHANGE');
+        require(newTotal >= oldTotal, 'BlazeSwap: ILLEGAL_CHANGE');
     }
 
     function voteFor(address provider) external {

@@ -361,9 +361,7 @@ describe('BlazeSwapDelegation', () => {
 
     await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).not.to.be.reverted
     // same providers
-    await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).to.be.revertedWith(
-      'BlazeSwap: ILLEGAL_CHANGE'
-    )
+    await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).not.to.be.reverted
   })
 
   it('changeProviders: same vote power', async () => {
@@ -377,9 +375,21 @@ describe('BlazeSwapDelegation', () => {
 
     await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).not.to.be.reverted
     // same vote power
-    await expect(delegation.changeProviders([TEST_PROVIDERS[2], TEST_PROVIDERS[0]])).to.be.revertedWith(
-      'BlazeSwap: ILLEGAL_CHANGE'
-    )
+    await expect(delegation.changeProviders([TEST_PROVIDERS[2], TEST_PROVIDERS[0]])).not.to.be.reverted
+  })
+
+  it('changeProviders: same vote power with fewer providers', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+    await addLiquidity(other1, expandTo18Decimals(2), expandTo18Decimals(2))
+
+    await delegation.voteFor(TEST_PROVIDERS[0])
+    await delegation.connect(other1).voteFor(TEST_PROVIDERS[1])
+
+    await expect(delegation.changeProviders([TEST_PROVIDERS[1], TEST_PROVIDERS[0]])).not.to.be.reverted
+
+    await delegation.connect(other1).voteFor(TEST_PROVIDERS[0])
+
+    await expect(delegation.changeProviders([TEST_PROVIDERS[0]])).not.to.be.reverted
   })
 
   it('changeProviders: switch to more voted providers', async () => {
