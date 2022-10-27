@@ -1,6 +1,7 @@
 # BlazeSwap
 
 [![Actions Status](https://github.com/blazeswap/contracts/workflows/CI/badge.svg)](https://github.com/blazeswap/contracts/actions)
+[![Version](https://img.shields.io/npm/v/@blazeswap/contracts)](https://www.npmjs.com/package/@blazeswap/contracts)
 
 BlazeSwap is decentralized exchange to swap cryptocurrencies on the Flare networks (Flare/Songbird/Coston).
 
@@ -9,6 +10,8 @@ Highly inspired by Uniswap V2, it adds full support for FTSO provider delegation
 On Flare it'll support also the 3-years distribution of the Flare tokens.
 
 In-depth documentation on Uniswap V2 is available at [uniswap.org](https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works).
+
+The built contract artifacts can be browsed via [unpkg.com](https://unpkg.com/browse/@blazeswap/contracts@latest/).
 
 # License
 
