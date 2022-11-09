@@ -1,8 +1,8 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, utils } from 'ethers'
+import { BigNumber, constants } from 'ethers'
 
-import { expandTo18Decimals, increaseTime, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
+import { expandTo18Decimals, increaseTime } from '../core/shared/utilities'
 import { routerFixture } from './shared/fixtures'
 import DeflatingERC20Test from '../../artifacts/contracts/periphery/test/DeflatingERC20Test.sol/DeflatingERC20Test.json'
 import {
@@ -13,36 +13,31 @@ import {
   IBlazeSwapRouter,
   IERC20,
   IWNat,
-  RouterEventEmitter,
 } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
 
-describe('BlazeSwapRouter03', () => {
+describe('BlazeSwapRouter split-fee', () => {
   const provider = waffle.provider
   const [wallet, feeRecipient, splitFeeRecipient] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let token0: IERC20
-  let token1: IERC20
   let WNAT: IWNat
   let WNATPartner: IERC20
   let manager: IBlazeSwapManager
   let factory: IBlazeSwapFactory
   let router: IBlazeSwapRouter
   let WNATPair: IBlazeSwapPair
-  let routerEventEmitter: RouterEventEmitter
   beforeEach(async function () {
     const fixture = await loadFixture(routerFixture)
     token0 = fixture.token0
-    token1 = fixture.token1
     WNAT = fixture.wNat
     WNATPartner = fixture.wNatPartner
     manager = fixture.manager
     factory = fixture.factory
     router = fixture.routerSplitFee
     WNATPair = fixture.wNatPair
-    routerEventEmitter = fixture.routerEventEmitter
 
     await manager.setTradingFeeTo(feeRecipient.address)
     await manager.setTradingFeeSplit(router.address, splitFeeRecipient.address, 25_00)
@@ -103,7 +98,7 @@ describe('BlazeSwapRouter03', () => {
         }
       )
       const receipt = await tx.wait()
-      expect(receipt.gasUsed).to.be.within(306500, 307500)
+      expect(receipt.gasUsed).to.be.within(308500, 309500)
     })
   })
 
@@ -130,6 +125,7 @@ describe('BlazeSwapRouter03', () => {
         DTTAmount,
         DTTAmount,
         WNATAmount,
+        1_00,
         wallet.address,
         constants.MaxUint256,
         {
@@ -145,15 +141,9 @@ describe('BlazeSwapRouter03', () => {
       await addLiquidity(DTTAmount, NATAmount)
 
       const startLiquidity = await DTTPair.totalSupply()
-      await router.swapExactNATForTokensSupportingFeeOnTransferTokens(
-        0,
-        [WNAT.address, DTT.address],
-        wallet.address,
-        constants.MaxUint256,
-        {
-          value: swapAmount,
-        }
-      )
+      await router.swapExactNATForTokens(0, [WNAT.address, DTT.address], wallet.address, constants.MaxUint256, {
+        value: swapAmount,
+      })
 
       await DTTPair.mintFee()
       const endLiquidity = await DTTPair.totalSupply()

@@ -43,8 +43,12 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         uint256 amountADesired,
         uint256 amountBDesired,
         uint256 amountAMin,
-        uint256 amountBMin
+        uint256 amountBMin,
+        uint256 feeBipsA,
+        uint256 feeBipsB
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
+        require(feeBipsA < 100_00, 'BlazeSwapRouter: ILLEGAL_A_FEE');
+        require(feeBipsB < 100_00, 'BlazeSwapRouter: ILLEGAL_B_FEE');
         // create the pair if it doesn't exist yet
         if (IBlazeSwapFactory(factory).getPair(tokenA, tokenB) == address(0)) {
             IBlazeSwapFactory(factory).createPair(tokenA, tokenB);
@@ -53,17 +57,35 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint256 amountBOptimal = BlazeSwapLibrary.quote(amountADesired, reserveA, reserveB);
+            uint256 amountBOptimal = applyFee(
+                BlazeSwapLibrary.quote(applyFee(amountADesired, feeBipsA, false), reserveA, reserveB),
+                feeBipsB,
+                true
+            );
             if (amountBOptimal <= amountBDesired) {
                 require(amountBOptimal >= amountBMin, 'BlazeSwapRouter: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint256 amountAOptimal = BlazeSwapLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint256 amountAOptimal = applyFee(
+                    BlazeSwapLibrary.quote(applyFee(amountBDesired, feeBipsB, false), reserveB, reserveA),
+                    feeBipsA,
+                    true
+                );
                 assert(amountAOptimal <= amountADesired);
                 require(amountAOptimal >= amountAMin, 'BlazeSwapRouter: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
+    }
+
+    function applyFee(
+        uint256 amount,
+        uint256 bips,
+        bool invert
+    ) private pure returns (uint256) {
+        if (bips == 0) return amount;
+        else if (!invert) return (amount * (100_00 - bips)) / 100_00;
+        else return (amount * 100_00) / (100_00 - bips);
     }
 
     function addLiquidity(
@@ -73,6 +95,8 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         uint256 amountBDesired,
         uint256 amountAMin,
         uint256 amountBMin,
+        uint256 feeBipsA,
+        uint256 feeBipsB,
         address to,
         uint256 deadline
     )
@@ -86,7 +110,16 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
             uint256 liquidity
         )
     {
-        (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
+        (amountA, amountB) = _addLiquidity(
+            tokenA,
+            tokenB,
+            amountADesired,
+            amountBDesired,
+            amountAMin,
+            amountBMin,
+            feeBipsA,
+            feeBipsB
+        );
         address pair = pairFor(tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
@@ -98,6 +131,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         uint256 amountTokenDesired,
         uint256 amountTokenMin,
         uint256 amountNATMin,
+        uint256 feeBipsToken,
         address to,
         uint256 deadline
     )
@@ -118,7 +152,9 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
             amountTokenDesired,
             msg.value,
             amountTokenMin,
-            amountNATMin
+            amountNATMin,
+            feeBipsToken,
+            0
         );
         address pair = pairFor(token, wNat);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
@@ -164,7 +200,8 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
             address(this),
             deadline
         );
-        TransferHelper.safeTransfer(token, to, amountToken);
+        // handle fee-on-transfer tokens (double transfer, but same pair interface)
+        TransferHelper.safeTransfer(token, to, IERC20(token).balanceOf(address(this)));
         IWNat(wNat).withdraw(amountNAT);
         TransferHelper.safeTransferNAT(to, amountNAT);
     }
@@ -206,158 +243,40 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         (amountToken, amountNAT) = removeLiquidityNAT(token, liquidity, amountTokenMin, amountNATMin, to, deadline);
     }
 
-    // **** REMOVE LIQUIDITY (supporting fee-on-transfer tokens) ****
-    function removeLiquidityNATSupportingFeeOnTransferTokens(
-        address token,
-        uint256 liquidity,
-        uint256 amountTokenMin,
-        uint256 amountNATMin,
-        address to,
-        uint256 deadline
-    ) public virtual override ensure(deadline) returns (uint256 amountNAT) {
-        (, amountNAT) = removeLiquidity(token, wNat, liquidity, amountTokenMin, amountNATMin, address(this), deadline);
-        TransferHelper.safeTransfer(token, to, IERC20(token).balanceOf(address(this)));
-        IWNat(wNat).withdraw(amountNAT);
-        TransferHelper.safeTransferNAT(to, amountNAT);
-    }
-
-    function removeLiquidityNATWithPermitSupportingFeeOnTransferTokens(
-        address token,
-        uint256 liquidity,
-        uint256 amountTokenMin,
-        uint256 amountNATMin,
-        address to,
-        uint256 deadline,
-        bool approveMax,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external virtual override returns (uint256 amountNAT) {
-        address pair = pairFor(token, wNat);
-        uint256 value = approveMax ? type(uint256).max : liquidity;
-        IBlazeSwapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
-        amountNAT = removeLiquidityNATSupportingFeeOnTransferTokens(
-            token,
-            liquidity,
-            amountTokenMin,
-            amountNATMin,
-            to,
-            deadline
-        );
-    }
-
     // **** SWAP ****
     // requires the initial amount to have already been sent to the first pair
-    function _swap(
+    function _swapExactAmounts(
         uint256[] memory amounts,
         address[] memory path,
         address _to
     ) internal virtual {
-        for (uint256 i; i < path.length - 1; i++) {
+        uint256 lastIndex = path.length - 1;
+        uint256 balanceBefore = IERC20(path[lastIndex]).balanceOf(_to);
+        for (uint256 i; i < lastIndex; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0, ) = BlazeSwapLibrary.sortTokens(input, output);
             uint256 amountOut = amounts[i + 1];
             (uint256 amount0Out, uint256 amount1Out) = input == token0
                 ? (uint256(0), amountOut)
                 : (amountOut, uint256(0));
-            address to = i < path.length - 2 ? pairFor(output, path[i + 2]) : _to;
+            address to = i < lastIndex - 1 ? pairFor(output, path[i + 2]) : _to;
             if (splitFee) {
                 IBlazeSwapPair(pairFor(input, output)).splitFeeSwap(amount0Out, amount1Out, to, new bytes(0));
             } else {
                 IBlazeSwapPair(pairFor(input, output)).swap(amount0Out, amount1Out, to, new bytes(0));
             }
         }
+        uint256 balanceAfter = IERC20(path[lastIndex]).balanceOf(_to);
+        require(balanceAfter - balanceBefore == amounts[lastIndex], 'BlazeSwapRouter: FEE_ON_TRANSFER');
     }
 
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
-        _swap(amounts, path, to);
-    }
-
-    function swapTokensForExactTokens(
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        amounts = getAmountsIn(amountOut, path);
-        require(amounts[0] <= amountInMax, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
-        _swap(amounts, path, to);
-    }
-
-    function swapExactNATForTokens(
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == wNat, 'BlazeSwapRouter: INVALID_PATH');
-        amounts = getAmountsOut(msg.value, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        IWNat(wNat).depositTo{value: amounts[0]}(pairFor(path[0], path[1]));
-        _swap(amounts, path, to);
-    }
-
-    function swapTokensForExactNAT(
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == wNat, 'BlazeSwapRouter: INVALID_PATH');
-        amounts = getAmountsIn(amountOut, path);
-        require(amounts[0] <= amountInMax, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
-        _swap(amounts, path, address(this));
-        IWNat(wNat).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferNAT(to, amounts[amounts.length - 1]);
-    }
-
-    function swapExactTokensForNAT(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[path.length - 1] == wNat, 'BlazeSwapRouter: INVALID_PATH');
-        amounts = getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
-        _swap(amounts, path, address(this));
-        IWNat(wNat).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferNAT(to, amounts[amounts.length - 1]);
-    }
-
-    function swapNATForExactTokens(
-        uint256 amountOut,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
-        require(path[0] == wNat, 'BlazeSwapRouter: INVALID_PATH');
-        amounts = getAmountsIn(amountOut, path);
-        require(amounts[0] <= msg.value, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
-        IWNat(wNat).depositTo{value: amounts[0]}(pairFor(path[0], path[1]));
-        _swap(amounts, path, to);
-        // refund dust nat, if any
-        if (msg.value > amounts[0]) TransferHelper.safeTransferNAT(msg.sender, msg.value - amounts[0]);
-    }
-
-    // **** SWAP (supporting fee-on-transfer tokens) ****
-    // requires the initial amount to have already been sent to the first pair
-    function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
+    function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to)
+        internal
+        virtual
+        returns (uint256[] memory amountsSent, uint256[] memory amountsRecv)
+    {
+        amountsSent = new uint256[](path.length);
+        amountsRecv = new uint256[](path.length);
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0, ) = BlazeSwapLibrary.sortTokens(input, output);
@@ -382,56 +301,115 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
             } else {
                 pair.swap(amount0Out, amount1Out, to, new bytes(0));
             }
+            amountsRecv[i] = amountInput;
+            amountsSent[i + 1] = amountOutput;
         }
     }
 
-    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+    function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external virtual override ensure(deadline) {
+    ) external virtual override ensure(deadline) returns (uint256[] memory amountsSent, uint256[] memory amountsRecv) {
         TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amountIn);
-        uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
-        _swapSupportingFeeOnTransferTokens(path, to);
-        require(
-            IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore >= amountOutMin,
-            'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
-        );
+        uint256 lastIndex = path.length - 1;
+        uint256 balanceBefore = IERC20(path[lastIndex]).balanceOf(to);
+        (amountsSent, amountsRecv) = _swapSupportingFeeOnTransferTokens(path, to);
+        amountsSent[0] = amountIn;
+        uint256 amountOut = IERC20(path[lastIndex]).balanceOf(to) - balanceBefore;
+        require(amountOut >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amountsRecv[lastIndex] = amountOut;
     }
 
-    function swapExactNATForTokensSupportingFeeOnTransferTokens(
+    function swapTokensForExactTokens(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
+        amounts = getAmountsIn(amountOut, path);
+        require(amounts[0] <= amountInMax, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
+        _swapExactAmounts(amounts, path, to);
+    }
+
+    function swapExactNATForTokens(
         uint256 amountOutMin,
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external payable virtual override ensure(deadline) {
+    )
+        external
+        payable
+        virtual
+        override
+        ensure(deadline)
+        returns (uint256[] memory amountsSent, uint256[] memory amountsRecv)
+    {
         require(path[0] == wNat, 'BlazeSwapRouter: INVALID_PATH');
         uint256 amountIn = msg.value;
         IWNat(wNat).depositTo{value: amountIn}(pairFor(path[0], path[1]));
-        uint256 balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
-        _swapSupportingFeeOnTransferTokens(path, to);
-        require(
-            IERC20(path[path.length - 1]).balanceOf(to) - balanceBefore >= amountOutMin,
-            'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
-        );
+        uint256 lastIndex = path.length - 1;
+        uint256 balanceBefore = IERC20(path[lastIndex]).balanceOf(to);
+        (amountsSent, amountsRecv) = _swapSupportingFeeOnTransferTokens(path, to);
+        amountsSent[0] = amountIn;
+        uint256 amountOut = IERC20(path[lastIndex]).balanceOf(to) - balanceBefore;
+        require(amountOut >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amountsRecv[lastIndex] = amountOut;
     }
 
-    function swapExactTokensForNATSupportingFeeOnTransferTokens(
+    function swapTokensForExactNAT(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external virtual override ensure(deadline) returns (uint256[] memory amounts) {
+        uint256 lastIndex = path.length - 1;
+        require(path[lastIndex] == wNat, 'BlazeSwapRouter: INVALID_PATH');
+        amounts = getAmountsIn(amountOut, path);
+        require(amounts[0] <= amountInMax, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
+        TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amounts[0]);
+        _swapExactAmounts(amounts, path, address(this));
+        IWNat(wNat).withdraw(amounts[lastIndex]);
+        TransferHelper.safeTransferNAT(to, amounts[lastIndex]);
+    }
+
+    function swapExactTokensForNAT(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
         address to,
         uint256 deadline
-    ) external virtual override ensure(deadline) {
-        require(path[path.length - 1] == wNat, 'BlazeSwapRouter: INVALID_PATH');
+    ) external virtual override ensure(deadline) returns (uint256[] memory amountsSent, uint256[] memory amountsRecv) {
+        uint256 lastIndex = path.length - 1;
+        require(path[lastIndex] == wNat, 'BlazeSwapRouter: INVALID_PATH');
         TransferHelper.safeTransferFrom(path[0], msg.sender, pairFor(path[0], path[1]), amountIn);
-        _swapSupportingFeeOnTransferTokens(path, address(this));
+        (amountsSent, amountsRecv) = _swapSupportingFeeOnTransferTokens(path, address(this));
+        amountsSent[0] = amountIn;
         uint256 amountOut = IERC20(wNat).balanceOf(address(this));
         require(amountOut >= amountOutMin, 'BlazeSwapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amountsRecv[lastIndex] = amountOut;
         IWNat(wNat).withdraw(amountOut);
         TransferHelper.safeTransferNAT(to, amountOut);
+    }
+
+    function swapNATForExactTokens(
+        uint256 amountOut,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable virtual override ensure(deadline) returns (uint256[] memory amounts) {
+        require(path[0] == wNat, 'BlazeSwapRouter: INVALID_PATH');
+        amounts = getAmountsIn(amountOut, path);
+        require(amounts[0] <= msg.value, 'BlazeSwapRouter: EXCESSIVE_INPUT_AMOUNT');
+        IWNat(wNat).depositTo{value: amounts[0]}(pairFor(path[0], path[1]));
+        _swapExactAmounts(amounts, path, to);
+        // refund dust nat, if any
+        if (msg.value > amounts[0]) TransferHelper.safeTransferNAT(msg.sender, msg.value - amounts[0]);
     }
 
     // **** LIBRARY FUNCTIONS ****
