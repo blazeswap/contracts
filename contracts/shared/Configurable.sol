@@ -8,7 +8,7 @@ library ConfigurableStorage {
         address configSetter;
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256('blazeswap.storage.Configuragble');
+    bytes32 internal constant STORAGE_SLOT = keccak256('blazeswap.storage.Configurable');
 
     function layout() internal pure returns (Layout storage l) {
         bytes32 slot = STORAGE_SLOT;
