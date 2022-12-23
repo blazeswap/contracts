@@ -25,7 +25,7 @@ contract BlazeSwapMigrator is IBlazeSwapMigrator {
 
     receive() external payable {}
 
-    function pairWithliquidity(
+    function pairWithLiquidity(
         address factorySource,
         address tokenA,
         address tokenB,

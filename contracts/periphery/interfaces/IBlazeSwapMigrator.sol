@@ -7,7 +7,7 @@ interface IBlazeSwapMigrator {
 
     function wNat() external view returns (address);
 
-    function pairWithliquidity(
+    function pairWithLiquidity(
         address factorySource,
         address tokenA,
         address tokenB,

@@ -59,13 +59,13 @@ describe('BlazeSwapMigrator', () => {
     return pair
   }
 
-  it('pairWithliquidity', async () => {
+  it('pairWithLiquidity', async () => {
     const tokenAmount = expandTo18Decimals(1)
     const wNatAmount = expandTo18Decimals(4)
     const pairOld = await addLiquidity(factoryOld, token, wNatOld, tokenAmount, wNatAmount, wallet.address)
 
     expect(
-      await migrator.pairWithliquidity(factory.address, token.address, wNatOld.address, wallet.address)
+      await migrator.pairWithLiquidity(factory.address, token.address, wNatOld.address, wallet.address)
     ).to.deep.eq([
       constants.AddressZero,
       BigNumber.from('0'),
@@ -75,7 +75,7 @@ describe('BlazeSwapMigrator', () => {
     ])
 
     expect(
-      await migrator.pairWithliquidity(factoryOld.address, token.address, wNatOld.address, wallet.address)
+      await migrator.pairWithLiquidity(factoryOld.address, token.address, wNatOld.address, wallet.address)
     ).to.deep.eq([
       pairOld.address,
       tokenAmount,
@@ -273,7 +273,7 @@ describe('BlazeSwapMigrator', () => {
     await addLiquidity(factoryOld, tokenDeflationary, wNatOld, tokenAmount, wNatAmount, walletOther.address)
     await addLiquidity(factoryOld, tokenDeflationary, wNatOld, tokenAmount, wNatAmount, wallet.address)
 
-    const [pairOldAddress, reserveToken, reserveWNAT, liquidity, totalSupply] = await migrator.pairWithliquidity(
+    const [pairOldAddress, reserveToken, reserveWNAT, liquidity, totalSupply] = await migrator.pairWithLiquidity(
       factoryOld.address,
       tokenDeflationary.address,
       wNatOld.address,
@@ -326,7 +326,7 @@ describe('BlazeSwapMigrator', () => {
       .withArgs(migrator.address, wallet.address, reserveWNAT.mul(liquidity).div(totalSupply).sub(amountWNATMin))
 
     expect(
-      await migrator.pairWithliquidity(factory.address, tokenDeflationary.address, wNat.address, wallet.address)
+      await migrator.pairWithLiquidity(factory.address, tokenDeflationary.address, wNat.address, wallet.address)
     ).to.deep.eq([
       pair.address,
       expandTo18Decimals(1).add(amountTokenMinReceived),
