@@ -26,7 +26,7 @@ interface IFtsoRewardManager {
 
     function claimReward(
         address payable _recipient,
-        uint256[] memory _rewardEpochs
+        uint256[] calldata _rewardEpochs
     ) external returns (uint256 _rewardAmount);
 
     function oldFtsoRewardManager() external view returns (address); // not currently available on Songbird

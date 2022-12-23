@@ -241,6 +241,45 @@ describe('BlazeSwapFtsoReward', () => {
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedRewards)
   })
 
+  it('distributeFtsoRewards:previous-epochs', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(10), expandTo18Decimals(10))
+
+    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 1, 1000)
+
+    await addLiquidity(other, expandTo18Decimals(10), expandTo18Decimals(10))
+
+    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+    await ftsoRewardManager.addRewards(pair.address, 2, 500)
+
+    await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
+
+    const expectedRewards1 = expandTo18Decimals(10).div(10)
+    const expectedRewards2 = expandTo18Decimals(20).div(20)
+
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
+
+    await expect(ftsoReward.distributeFtsoRewards([2]))
+      .to.emit(ftsoReward, 'FtsoRewardsDistributed')
+      .withArgs(BigNumber.from('1'), expectedRewards1, wallet.address)
+      .to.emit(ftsoReward, 'FtsoRewardsDistributed')
+      .withArgs(BigNumber.from('2'), expectedRewards2, wallet.address)
+
+    expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedRewards1.add(expectedRewards2))
+
+    const expectedWalletRewards1 = expectedRewards1
+      .mul(expandTo18Decimals(10).sub(MINIMUM_LIQUIDITY))
+      .div(expandTo18Decimals(10))
+
+    const expectedWalletRewards2 = expectedRewards2
+      .mul(expandTo18Decimals(10).sub(MINIMUM_LIQUIDITY))
+      .div(expandTo18Decimals(20))
+
+    const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
+    expect(epochs).to.deep.eq([BigNumber.from('1'), BigNumber.from('2')])
+    expect(amounts).to.deep.eq([expectedWalletRewards1, expectedWalletRewards2])
+  })
+
   it('epochsWithUnclaimedFtsoRewards', async () => {
     await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
     await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)

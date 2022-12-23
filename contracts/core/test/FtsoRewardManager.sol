@@ -92,20 +92,22 @@ contract FtsoRewardManager is IFtsoRewardManager {
 
     function claimReward(
         address payable _recipient,
-        uint256[] memory _rewardEpochs
+        uint256[] calldata _rewardEpochs
     ) external returns (uint256 _rewardAmount) {
         require(active, 'NOT ACTIVE');
+        uint256 maxRewardEpoch;
+        for (uint256 i; i < _rewardEpochs.length; i++) {
+            if (maxRewardEpoch < _rewardEpochs[i]) {
+                maxRewardEpoch = _rewardEpochs[i];
+            }
+        }
         uint256 nextEpochToExpire = ftsoManager.getRewardEpochToExpireNext();
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
         for (uint256 i; i < rewards[msg.sender].length; i++) {
             Reward storage r = rewards[msg.sender][i];
-            if (r.epochId >= nextEpochToExpire && r.epochId < currentEpoch && r.value > 0 && !r.claimed) {
-                for (uint256 j; j < _rewardEpochs.length; j++) {
-                    if (_rewardEpochs[j] == r.epochId) {
-                        _rewardAmount += r.value;
-                        r.claimed = true;
-                    }
-                }
+            if (r.epochId >= nextEpochToExpire && r.epochId < currentEpoch && r.epochId <= maxRewardEpoch && r.value > 0 && !r.claimed) {
+                _rewardAmount += r.value;
+                r.claimed = true;
             }
         }
         if (_rewardAmount > 0) {
