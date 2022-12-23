@@ -18,7 +18,7 @@ contract BlazeSwapERC20Snapshot is BlazeSwapERC20, IERC20Snapshot {
     }
 
     // ERC20 Snapshot extension allowing retrieval of historical balances and total supply,
-    // inspired by https://github.com/Giveth/minimd/blob/ea04d950eea153a04c51fa510b068b9dded390cb/contracts/MiniMeToken.sol[MiniMeToken]
+    // inspired by https://github.com/Giveth/minime/blob/ea04d950eea153a04c51fa510b068b9dded390cb/contracts/MiniMeToken.sol[MiniMeToken]
 
     function _updateSnapshot(address from, address to) private {
         if (from == address(0)) {
@@ -53,10 +53,7 @@ contract BlazeSwapERC20Snapshot is BlazeSwapERC20, IERC20Snapshot {
     }
 
     function _valueAt(uint256 snapshotId, Snapshot[] storage snapshots) private view returns (bool, uint256) {
-        require(snapshotId > 0 && snapshotId <= block.number, 'BlazeSwap: INVALID_SNAPSHOT_ID');
-
-        // not snapshotted, return false
-        if (snapshots.length == 0) return (false, 0);
+        require(snapshotId <= block.number, 'BlazeSwap: INVALID_SNAPSHOT_ID');
 
         // find the first snapshots index with id > snapshotId in O(log(n))
         uint256 low;
