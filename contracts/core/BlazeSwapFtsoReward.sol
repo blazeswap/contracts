@@ -56,7 +56,9 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         return bips > 0 ? (amount * (100_00 - bips)) / 100_00 : amount; // cannot overflow, fee round up
     }
 
-    function getActiveRewardEpochsExclusive(bool toDistributeOnly) private view returns (EpochsRange memory epochsRange) {
+    function getActiveRewardEpochsExclusive(
+        bool toDistributeOnly
+    ) private view returns (EpochsRange memory epochsRange) {
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         uint256 firstActiveEpoch;
         try ftsoManager.getRewardEpochToExpireNext() returns (uint256 epoch) {

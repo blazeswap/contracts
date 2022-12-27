@@ -105,7 +105,13 @@ contract FtsoRewardManager is IFtsoRewardManager {
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
         for (uint256 i; i < rewards[msg.sender].length; i++) {
             Reward storage r = rewards[msg.sender][i];
-            if (r.epochId >= nextEpochToExpire && r.epochId < currentEpoch && r.epochId <= maxRewardEpoch && r.value > 0 && !r.claimed) {
+            if (
+                r.epochId >= nextEpochToExpire &&
+                r.epochId < currentEpoch &&
+                r.epochId <= maxRewardEpoch &&
+                r.value > 0 &&
+                !r.claimed
+            ) {
                 _rewardAmount += r.value;
                 r.claimed = true;
             }
