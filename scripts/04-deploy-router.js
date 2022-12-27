@@ -4,7 +4,7 @@ async function main() {
   const factory = getEnvParam('FACTORY')
   const manager = await ethers.getContractAt('BlazeSwapManager', getEnvParam('MANAGER'))
   const wNat = await manager.wNat()
-  await deployContract('BlazeSwapRouter', [factory, wNat, false])
+  await deployContract('BlazeSwapRouter', [factory, wNat, false], true)
 }
 
 main()
