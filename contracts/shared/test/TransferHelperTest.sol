@@ -5,28 +5,15 @@ import '../libraries/TransferHelper.sol';
 
 // test helper for transfers
 contract TransferHelperTest {
-    function safeApprove(
-        address token,
-        address to,
-        uint256 value
-    ) external {
+    function safeApprove(address token, address to, uint256 value) external {
         TransferHelper.safeApprove(token, to, value);
     }
 
-    function safeTransfer(
-        address token,
-        address to,
-        uint256 value
-    ) external {
+    function safeTransfer(address token, address to, uint256 value) external {
         TransferHelper.safeTransfer(token, to, value);
     }
 
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) external {
+    function safeTransferFrom(address token, address from, address to, uint256 value) external {
         TransferHelper.safeTransferFrom(token, from, to, value);
     }
 
@@ -50,11 +37,7 @@ contract TransferHelperTestFakeERC20Compliant {
         return success;
     }
 
-    function transferFrom(
-        address,
-        address,
-        uint256
-    ) external view returns (bool) {
+    function transferFrom(address, address, uint256) external view returns (bool) {
         require(!shouldRevert, 'REVERT');
         return success;
     }
@@ -77,11 +60,7 @@ contract TransferHelperTestFakeERC20Noncompliant {
         require(!shouldRevert);
     }
 
-    function transferFrom(
-        address,
-        address,
-        uint256
-    ) external view {
+    function transferFrom(address, address, uint256) external view {
         require(!shouldRevert);
     }
 

@@ -55,11 +55,9 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         return bips > 0 ? (amount * (100_00 - bips)) / 100_00 : amount; // cannot overflow, fee round up
     }
 
-    function getActiveRewardEpochsExclusive(IFtsoManager ftsoManager)
-        private
-        view
-        returns (EpochsRange memory epochsRange)
-    {
+    function getActiveRewardEpochsExclusive(
+        IFtsoManager ftsoManager
+    ) private view returns (EpochsRange memory epochsRange) {
         uint256 firstActiveEpoch;
         try ftsoManager.getRewardEpochToExpireNext() returns (uint256 epoch) {
             firstActiveEpoch = epoch;
@@ -115,15 +113,13 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         }
     }
 
-    function epochsWithUndistributedFtsoRewards(address beneficiary)
+    function epochsWithUndistributedFtsoRewards(
+        address beneficiary
+    )
         external
         view
         onlyDelegatedCall
-        returns (
-            uint256[] memory epochs,
-            uint256[] memory amounts,
-            uint256[] memory totalAmounts
-        )
+        returns (uint256[] memory epochs, uint256[] memory amounts, uint256[] memory totalAmounts)
     {
         IFtsoRewardManager[] memory ftsoRewardManagers;
         uint256 rewardsFeeBips;
@@ -230,12 +226,9 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         }
     }
 
-    function epochsWithUnclaimedFtsoRewards(address beneficiary)
-        external
-        view
-        onlyDelegatedCall
-        returns (uint256[] memory epochs, uint256[] memory amounts)
-    {
+    function epochsWithUnclaimedFtsoRewards(
+        address beneficiary
+    ) external view onlyDelegatedCall returns (uint256[] memory epochs, uint256[] memory amounts) {
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
         IFtsoManager ftsoManager = BlazeSwapFlareLibrary.getFtsoManager();
         EpochsRange memory epochsRange = getActiveRewardEpochsExclusive(ftsoManager);
@@ -307,11 +300,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         }
     }
 
-    function claimFtsoRewards(
-        uint256[] calldata epochs,
-        address to,
-        bool wrapped
-    ) external lock onlyDelegatedCall {
+    function claimFtsoRewards(uint256[] calldata epochs, address to, bool wrapped) external lock onlyDelegatedCall {
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
         claimFtsoRewards(l, epochs, msg.sender, to, msg.sender, wrapped);
     }
@@ -333,12 +322,10 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         claimFtsoRewards(l, epochs, beneficiary, to, msg.sender, wrapped);
     }
 
-    function claimedFtsoRewards(address beneficiary, uint256 epoch)
-        external
-        view
-        onlyDelegatedCall
-        returns (uint256 amount)
-    {
+    function claimedFtsoRewards(
+        address beneficiary,
+        uint256 epoch
+    ) external view onlyDelegatedCall returns (uint256 amount) {
         amount = BlazeSwapFtsoRewardStorage.layout().claimedRewards[beneficiary][epoch];
     }
 

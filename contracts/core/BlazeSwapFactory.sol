@@ -14,11 +14,7 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
         code = type(BlazeSwapPair).creationCode;
     }
 
-    function initializePair(
-        address pair,
-        address token0,
-        address token1
-    ) internal virtual override {
+    function initializePair(address pair, address token0, address token1) internal virtual override {
         super.initializePair(pair, token0, token1);
         IBlazeSwapManager m = IBlazeSwapManager(manager);
         BlazeSwapPair p = BlazeSwapPair(payable(pair));

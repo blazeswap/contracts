@@ -30,17 +30,7 @@ contract BlazeSwapMigrator is IBlazeSwapMigrator {
         address tokenA,
         address tokenB,
         address owner
-    )
-        external
-        view
-        returns (
-            address pair,
-            uint256 reserveA,
-            uint256 reserveB,
-            uint256 liquidity,
-            uint256 totalSupply
-        )
-    {
+    ) external view returns (address pair, uint256 reserveA, uint256 reserveB, uint256 liquidity, uint256 totalSupply) {
         pair = IBlazeSwapBaseFactory(factorySource).getPair(tokenA, tokenB);
         if (pair != address(0)) {
             IBlazeSwapBasePair p = IBlazeSwapBasePair(pair);
@@ -219,15 +209,7 @@ contract BlazeSwapMigrator is IBlazeSwapMigrator {
         uint256 amountBMin,
         uint256 feeBipsA,
         uint256 feeBipsB
-    )
-        internal
-        virtual
-        returns (
-            uint256 amountA,
-            uint256 amountB,
-            uint256 liquidity
-        )
-    {
+    ) internal virtual returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         require(feeBipsA < 100_00, 'BlazeSwapMigrator: ILLEGAL_A_FEE');
         require(feeBipsB < 100_00, 'BlazeSwapMigrator: ILLEGAL_B_FEE');
         // create the pair if it doesn't exist yet
@@ -263,11 +245,7 @@ contract BlazeSwapMigrator is IBlazeSwapMigrator {
         liquidity = IBlazeSwapBasePair(pair).mint(msg.sender);
     }
 
-    function applyFee(
-        uint256 amount,
-        uint256 bips,
-        bool invert
-    ) private pure returns (uint256) {
+    function applyFee(uint256 amount, uint256 bips, bool invert) private pure returns (uint256) {
         if (bips == 0) return amount;
         else if (!invert) return (amount * (100_00 - bips)) / 100_00;
         else return (amount * 100_00) / (100_00 - bips);

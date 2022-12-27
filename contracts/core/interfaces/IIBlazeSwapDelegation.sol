@@ -5,11 +5,7 @@ pragma abicoder v2;
 import './IIBlazeSwapPluginImpl.sol';
 
 interface IIBlazeSwapDelegation is IIBlazeSwapPluginImpl {
-    function transferDelegatorVotes(
-        address from,
-        address to,
-        uint256 amount
-    ) external;
+    function transferDelegatorVotes(address from, address to, uint256 amount) external;
 
     function withdrawRewardFees(bool wrapped) external returns (uint256 rewardFees);
 }

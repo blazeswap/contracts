@@ -23,11 +23,7 @@ contract BlazeSwapBaseFactory is IBlazeSwapBaseFactory {
         code = type(BlazeSwapBasePair).creationCode;
     }
 
-    function initializePair(
-        address pair,
-        address token0,
-        address token1
-    ) internal virtual {
+    function initializePair(address pair, address token0, address token1) internal virtual {
         BlazeSwapBasePair(pair).initialize(manager, token0, token1);
     }
 

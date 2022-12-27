@@ -59,7 +59,7 @@ library FixedPoint {
     function muli(uq112x112 memory self, int256 y) internal pure returns (int256) {
         unchecked {
             uint256 z = FullMath.mulDiv(self._x, uint256(y < 0 ? -y : y), Q112);
-            require(z < 2**255, 'FixedPoint::muli: overflow');
+            require(z < 2 ** 255, 'FixedPoint::muli: overflow');
             return y < 0 ? -int256(z) : int256(z);
         }
     }

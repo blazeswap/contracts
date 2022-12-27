@@ -11,7 +11,10 @@ interface IFtsoRewardManager {
 
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (uint256[] memory _epochIds);
 
-    function getStateOfRewards(address _beneficiary, uint256 _rewardEpoch)
+    function getStateOfRewards(
+        address _beneficiary,
+        uint256 _rewardEpoch
+    )
         external
         view
         returns (
@@ -21,25 +24,24 @@ interface IFtsoRewardManager {
             bool _claimable
         );
 
-    function claimReward(address payable _recipient, uint256[] memory _rewardEpochs)
-        external
-        returns (uint256 _rewardAmount);
+    function claimReward(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs
+    ) external returns (uint256 _rewardAmount);
 
     function oldFtsoRewardManager() external view returns (address); // not currently available on Songbird
 
-    function getUnclaimedReward(uint256 _rewardEpoch, address _dataProvider)
-        external
-        view
-        returns (uint256 _amount, uint256 _weight);
+    function getUnclaimedReward(
+        uint256 _rewardEpoch,
+        address _dataProvider
+    ) external view returns (uint256 _amount, uint256 _weight);
 
     function getDataProviderCurrentFeePercentage(address _dataProvider) external view returns (uint256);
 
-    function getDataProviderScheduledFeePercentageChanges(address _dataProvider)
+    function getDataProviderScheduledFeePercentageChanges(
+        address _dataProvider
+    )
         external
         view
-        returns (
-            uint256[] memory _feePercentageBIPS,
-            uint256[] memory _validFromEpoch,
-            bool[] memory _fixed
-        );
+        returns (uint256[] memory _feePercentageBIPS, uint256[] memory _validFromEpoch, bool[] memory _fixed);
 }

@@ -9,9 +9,5 @@ interface IIBlazeSwapRewardManager {
 
     function wrapRewards() external;
 
-    function sendRewards(
-        address to,
-        uint256 amount,
-        bool unwrap
-    ) external;
+    function sendRewards(address to, uint256 amount, bool unwrap) external;
 }

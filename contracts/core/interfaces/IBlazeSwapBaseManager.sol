@@ -11,11 +11,7 @@ interface IBlazeSwapBaseManager is IConfigurable {
 
     function tradingFeeTo() external view returns (address);
 
-    function setTradingFeeSplit(
-        address router,
-        address _recipient,
-        uint256 _bips
-    ) external;
+    function setTradingFeeSplit(address router, address _recipient, uint256 _bips) external;
 
     function getTradingFeeSplit(address router) external view returns (address recipient, uint256 bips);
 }

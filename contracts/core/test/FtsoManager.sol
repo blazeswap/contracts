@@ -44,15 +44,7 @@ contract FtsoManager is IFtsoManager {
         return 7 days;
     }
 
-    function rewardEpochs(uint256)
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function rewardEpochs(uint256) external pure returns (uint256, uint256, uint256) {
         revert('NOT IMPLEMENTED');
     }
 }

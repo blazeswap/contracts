@@ -26,11 +26,7 @@ contract BlazeSwapBaseManager is IBlazeSwapBaseManager, Configurable {
         tradingFeeTo = _tradingFeeTo;
     }
 
-    function setTradingFeeSplit(
-        address router,
-        address _recipient,
-        uint256 _bips
-    ) external onlyConfigSetter {
+    function setTradingFeeSplit(address router, address _recipient, uint256 _bips) external onlyConfigSetter {
         require(_bips <= 100_00, 'BlazeSwap: OVERFLOW');
         tradingFeeSplit[router] = FeeRecipient(_recipient, _bips);
     }

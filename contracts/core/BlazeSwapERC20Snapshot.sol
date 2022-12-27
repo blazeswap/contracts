@@ -13,11 +13,7 @@ contract BlazeSwapERC20Snapshot is BlazeSwapERC20, IERC20Snapshot {
     Snapshot[] private _totalSupplySnapshots;
     uint256 private _currentSnapshotId;
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256
-    ) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal virtual override {
         _updateSnapshot(from, to);
     }
 

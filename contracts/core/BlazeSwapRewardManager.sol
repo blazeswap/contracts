@@ -49,11 +49,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
     }
 
     // re-entrancy check in parent
-    function sendRewards(
-        address to,
-        uint256 amount,
-        bool unwrap
-    ) external onlyParent {
+    function sendRewards(address to, uint256 amount, bool unwrap) external onlyParent {
         if (unwrap) {
             wNat.withdraw(amount);
             TransferHelper.safeTransferNAT(to, amount);

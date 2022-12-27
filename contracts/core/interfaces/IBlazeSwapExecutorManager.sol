@@ -11,10 +11,10 @@ enum ExecutorPermission {
 interface IBlazeSwapExecutorManager {
     event Grant(address indexed owner, address indexed executor, ExecutorPermission permission);
 
-    function executorPermission(address rewardOwnerAddress, address executorAddress)
-        external
-        view
-        returns (ExecutorPermission);
+    function executorPermission(
+        address rewardOwnerAddress,
+        address executorAddress
+    ) external view returns (ExecutorPermission);
 
     function setExecutorPermission(address _executor, ExecutorPermission _permission) external;
 }

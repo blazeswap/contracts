@@ -39,11 +39,7 @@ contract WNAT is IWNat {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) public returns (bool) {
+    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
         require(balanceOf[src] >= wad, '');
         _updateSnapshot(src, dst);
 
@@ -155,15 +151,12 @@ contract WNAT is IWNat {
         emit Withdrawal(src, wad);
     }
 
-    function delegatesOf(address _owner)
+    function delegatesOf(
+        address _owner
+    )
         external
         view
-        returns (
-            address[] memory _delegateAddresses,
-            uint256[] memory _bips,
-            uint256 _count,
-            uint256 _delegationMode
-        )
+        returns (address[] memory _delegateAddresses, uint256[] memory _bips, uint256 _count, uint256 _delegationMode)
     {
         Delegated[] storage ds = delegation[_owner];
         if (ds.length > 0) {
@@ -178,15 +171,13 @@ contract WNAT is IWNat {
         }
     }
 
-    function delegatesOfAt(address, uint256)
+    function delegatesOfAt(
+        address,
+        uint256
+    )
         external
         pure
-        returns (
-            address[] memory _delegateAddresses,
-            uint256[] memory _bips,
-            uint256 _count,
-            uint256 _delegationMode
-        )
+        returns (address[] memory _delegateAddresses, uint256[] memory _bips, uint256 _count, uint256 _delegationMode)
     {
         // mock
         _delegationMode = 1;

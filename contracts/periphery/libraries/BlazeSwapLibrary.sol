@@ -12,11 +12,7 @@ library BlazeSwapLibrary {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(
-        address factory,
-        address tokenA,
-        address tokenB
-    ) internal pure returns (address pair) {
+    function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
         pair = address(
             uint160(
@@ -46,11 +42,7 @@ library BlazeSwapLibrary {
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
-    function quote(
-        uint256 amountA,
-        uint256 reserveA,
-        uint256 reserveB
-    ) internal pure returns (uint256 amountB) {
+    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {
         require(amountA > 0, 'BlazeSwapLibrary: INSUFFICIENT_AMOUNT');
         require(reserveA > 0 && reserveB > 0, 'BlazeSwapLibrary: INSUFFICIENT_LIQUIDITY');
         amountB = (amountA * reserveB) / reserveA;

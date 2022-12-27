@@ -12,16 +12,7 @@ interface IBlazeSwapMigrator {
         address tokenA,
         address tokenB,
         address owner
-    )
-        external
-        view
-        returns (
-            address pair,
-            uint256 reserveA,
-            uint256 reserveB,
-            uint256 liquidity,
-            uint256 totalSupply
-        );
+    ) external view returns (address pair, uint256 reserveA, uint256 reserveB, uint256 liquidity, uint256 totalSupply);
 
     function migrate(
         address pairSource,

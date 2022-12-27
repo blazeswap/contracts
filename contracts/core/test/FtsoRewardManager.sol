@@ -30,11 +30,7 @@ contract FtsoRewardManager is IFtsoRewardManager {
 
     receive() external payable {}
 
-    function addRewards(
-        address _beneficiary,
-        uint256 _epochId,
-        uint256 _bips
-    ) external payable {
+    function addRewards(address _beneficiary, uint256 _epochId, uint256 _bips) external payable {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(_epochId);
         uint256 balance = IWNat(wNat).balanceOfAt(_beneficiary, votePowerBlock);
         rewards[_beneficiary].push(Reward(_epochId, (balance * _bips) / 100_00, false));
@@ -64,7 +60,10 @@ contract FtsoRewardManager is IFtsoRewardManager {
         }
     }
 
-    function getStateOfRewards(address _beneficiary, uint256 _rewardEpoch)
+    function getStateOfRewards(
+        address _beneficiary,
+        uint256 _rewardEpoch
+    )
         external
         view
         returns (
@@ -91,10 +90,10 @@ contract FtsoRewardManager is IFtsoRewardManager {
         _claimable = _rewardEpoch >= nextEpochToExpire && _rewardEpoch < currentEpoch;
     }
 
-    function claimReward(address payable _recipient, uint256[] memory _rewardEpochs)
-        external
-        returns (uint256 _rewardAmount)
-    {
+    function claimReward(
+        address payable _recipient,
+        uint256[] memory _rewardEpochs
+    ) external returns (uint256 _rewardAmount) {
         require(active, 'NOT ACTIVE');
         uint256 nextEpochToExpire = ftsoManager.getRewardEpochToExpireNext();
         uint256 currentEpoch = ftsoManager.getCurrentRewardEpoch();
@@ -127,13 +126,11 @@ contract FtsoRewardManager is IFtsoRewardManager {
         return 20_00;
     }
 
-    function getDataProviderScheduledFeePercentageChanges(address)
+    function getDataProviderScheduledFeePercentageChanges(
+        address
+    )
         external
         pure
-        returns (
-            uint256[] memory _feePercentageBIPS,
-            uint256[] memory _validFromEpoch,
-            bool[] memory _fixed
-        )
+        returns (uint256[] memory _feePercentageBIPS, uint256[] memory _validFromEpoch, bool[] memory _fixed)
     {}
 }

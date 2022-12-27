@@ -9,19 +9,11 @@ contract BlazeSwapMath {
         r = Babylonian.sqrt(x);
     }
 
-    function mulDiv(
-        uint256 x,
-        uint256 y,
-        uint256 z
-    ) external pure returns (uint256 r) {
+    function mulDiv(uint256 x, uint256 y, uint256 z) external pure returns (uint256 r) {
         r = FullMath.mulDiv(x, y, z);
     }
 
-    function mulDivRoundingUp(
-        uint256 x,
-        uint256 y,
-        uint256 z
-    ) external pure returns (uint256 r) {
+    function mulDivRoundingUp(uint256 x, uint256 y, uint256 z) external pure returns (uint256 r) {
         r = FullMath.mulDivRoundingUp(x, y, z);
     }
 }

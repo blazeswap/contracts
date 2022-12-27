@@ -5,11 +5,7 @@ import '../interfaces/flare/IVPToken.sol';
 import '../libraries/Math.sol';
 
 library Delegator {
-    function delegate(
-        IVPToken token,
-        address[] memory newProviders,
-        uint256 maxDelegates
-    ) internal {
+    function delegate(IVPToken token, address[] memory newProviders, uint256 maxDelegates) internal {
         uint256 len = Math.min(newProviders.length, maxDelegates);
         uint256 bips = 100_00 / len;
         require(bips > 0);
@@ -21,11 +17,7 @@ library Delegator {
         require(count == len, 'BlazeSwap: DUPLICATED_PROVIDERS');
     }
 
-    function changeProviders(
-        IVPToken token,
-        address[] memory newProviders,
-        uint256 maxDelegates
-    ) internal {
+    function changeProviders(IVPToken token, address[] memory newProviders, uint256 maxDelegates) internal {
         token.undelegateAll();
         delegate(token, newProviders, maxDelegates);
     }

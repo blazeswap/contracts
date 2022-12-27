@@ -24,13 +24,7 @@ interface IBlazeSwapRouter is IBlazeSwapMulticall {
         uint256 feeBipsB,
         address to,
         uint256 deadline
-    )
-        external
-        returns (
-            uint256 amountA,
-            uint256 amountB,
-            uint256 liquidity
-        );
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity);
 
     function addLiquidityNAT(
         address token,
@@ -40,14 +34,7 @@ interface IBlazeSwapRouter is IBlazeSwapMulticall {
         uint256 feeBipsToken,
         address to,
         uint256 deadline
-    )
-        external
-        payable
-        returns (
-            uint256 amountToken,
-            uint256 amountNAT,
-            uint256 liquidity
-        );
+    ) external payable returns (uint256 amountToken, uint256 amountNAT, uint256 liquidity);
 
     function removeLiquidity(
         address tokenA,
@@ -145,11 +132,7 @@ interface IBlazeSwapRouter is IBlazeSwapMulticall {
         uint256 deadline
     ) external payable returns (uint256[] memory amounts);
 
-    function quote(
-        uint256 amountA,
-        uint256 reserveA,
-        uint256 reserveB
-    ) external pure returns (uint256 amountB);
+    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) external pure returns (uint256 amountB);
 
     function getAmountOut(
         uint256 amountIn,
@@ -171,12 +154,5 @@ interface IBlazeSwapRouter is IBlazeSwapMulticall {
 
     function getReserves(address tokenA, address tokenB) external view returns (uint256, uint256);
 
-    function selfPermit(
-        address token,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
+    function selfPermit(address token, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external;
 }

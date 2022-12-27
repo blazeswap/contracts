@@ -17,10 +17,10 @@ interface IBlazeSwapDelegation {
 
     function providersWithVotes() external view returns (address[] memory, uint256[] memory);
 
-    function providersSubsetWithVotes(uint256 offset, uint256 count)
-        external
-        view
-        returns (address[] memory, uint256[] memory);
+    function providersSubsetWithVotes(
+        uint256 offset,
+        uint256 count
+    ) external view returns (address[] memory, uint256[] memory);
 
     function voteFor(address provider) external;
 

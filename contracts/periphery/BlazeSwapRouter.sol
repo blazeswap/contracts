@@ -22,11 +22,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         _;
     }
 
-    constructor(
-        address _factory,
-        address _wNat,
-        bool _splitFee
-    ) {
+    constructor(address _factory, address _wNat, bool _splitFee) {
         factory = _factory;
         wNat = _wNat;
         splitFee = _splitFee;
@@ -78,11 +74,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         }
     }
 
-    function applyFee(
-        uint256 amount,
-        uint256 bips,
-        bool invert
-    ) private pure returns (uint256) {
+    function applyFee(uint256 amount, uint256 bips, bool invert) private pure returns (uint256) {
         if (bips == 0) return amount;
         else if (!invert) return (amount * (100_00 - bips)) / 100_00;
         else return (amount * 100_00) / (100_00 - bips);
@@ -99,17 +91,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         uint256 feeBipsB,
         address to,
         uint256 deadline
-    )
-        external
-        virtual
-        override
-        ensure(deadline)
-        returns (
-            uint256 amountA,
-            uint256 amountB,
-            uint256 liquidity
-        )
-    {
+    ) external virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         (amountA, amountB) = _addLiquidity(
             tokenA,
             tokenB,
@@ -140,11 +122,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         virtual
         override
         ensure(deadline)
-        returns (
-            uint256 amountToken,
-            uint256 amountNAT,
-            uint256 liquidity
-        )
+        returns (uint256 amountToken, uint256 amountNAT, uint256 liquidity)
     {
         (amountToken, amountNAT) = _addLiquidity(
             token,
@@ -245,11 +223,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
 
     // **** SWAP ****
     // requires the initial amount to have already been sent to the first pair
-    function _swapExactAmounts(
-        uint256[] memory amounts,
-        address[] memory path,
-        address _to
-    ) internal virtual {
+    function _swapExactAmounts(uint256[] memory amounts, address[] memory path, address _to) internal virtual {
         uint256 lastIndex = path.length - 1;
         uint256 balanceBefore = IERC20(path[lastIndex]).balanceOf(_to);
         for (uint256 i; i < lastIndex; i++) {
@@ -270,11 +244,10 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         require(balanceAfter - balanceBefore == amounts[lastIndex], 'BlazeSwapRouter: FEE_ON_TRANSFER');
     }
 
-    function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to)
-        internal
-        virtual
-        returns (uint256[] memory amountsSent, uint256[] memory amountsRecv)
-    {
+    function _swapSupportingFeeOnTransferTokens(
+        address[] memory path,
+        address _to
+    ) internal virtual returns (uint256[] memory amountsSent, uint256[] memory amountsRecv) {
         amountsSent = new uint256[](path.length);
         amountsRecv = new uint256[](path.length);
         for (uint256 i; i < path.length - 1; i++) {
@@ -437,23 +410,17 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         return BlazeSwapLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
-    function getAmountsOut(uint256 amountIn, address[] memory path)
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory amounts)
-    {
+    function getAmountsOut(
+        uint256 amountIn,
+        address[] memory path
+    ) public view virtual override returns (uint256[] memory amounts) {
         return BlazeSwapLibrary.getAmountsOut(factory, amountIn, path);
     }
 
-    function getAmountsIn(uint256 amountOut, address[] memory path)
-        public
-        view
-        virtual
-        override
-        returns (uint256[] memory amounts)
-    {
+    function getAmountsIn(
+        uint256 amountOut,
+        address[] memory path
+    ) public view virtual override returns (uint256[] memory amounts) {
         return BlazeSwapLibrary.getAmountsIn(factory, amountOut, path);
     }
 
@@ -465,14 +432,7 @@ contract BlazeSwapRouter is IBlazeSwapRouter, BlazeSwapMulticall {
         return BlazeSwapLibrary.getReserves(factory, tokenA, tokenB);
     }
 
-    function selfPermit(
-        address token,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
+    function selfPermit(address token, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external {
         IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
     }
 }

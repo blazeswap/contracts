@@ -28,37 +28,33 @@ contract FixedPointTest {
         return FixedPoint.muli(self, y);
     }
 
-    function muluq(FixedPoint.uq112x112 calldata self, FixedPoint.uq112x112 calldata other)
-        external
-        pure
-        returns (FixedPoint.uq112x112 memory)
-    {
+    function muluq(
+        FixedPoint.uq112x112 calldata self,
+        FixedPoint.uq112x112 calldata other
+    ) external pure returns (FixedPoint.uq112x112 memory) {
         return FixedPoint.muluq(self, other);
     }
 
-    function getGasCostOfMuluq(FixedPoint.uq112x112 calldata self, FixedPoint.uq112x112 calldata other)
-        external
-        view
-        returns (uint256)
-    {
+    function getGasCostOfMuluq(
+        FixedPoint.uq112x112 calldata self,
+        FixedPoint.uq112x112 calldata other
+    ) external view returns (uint256) {
         uint256 gasBefore = gasleft();
         FixedPoint.muluq(self, other);
         return gasBefore - gasleft();
     }
 
-    function divuq(FixedPoint.uq112x112 calldata self, FixedPoint.uq112x112 calldata other)
-        external
-        pure
-        returns (FixedPoint.uq112x112 memory)
-    {
+    function divuq(
+        FixedPoint.uq112x112 calldata self,
+        FixedPoint.uq112x112 calldata other
+    ) external pure returns (FixedPoint.uq112x112 memory) {
         return FixedPoint.divuq(self, other);
     }
 
-    function getGasCostOfDivuq(FixedPoint.uq112x112 calldata self, FixedPoint.uq112x112 calldata other)
-        external
-        view
-        returns (uint256)
-    {
+    function getGasCostOfDivuq(
+        FixedPoint.uq112x112 calldata self,
+        FixedPoint.uq112x112 calldata other
+    ) external view returns (uint256) {
         uint256 gasBefore = gasleft();
         FixedPoint.divuq(self, other);
         return gasBefore - gasleft();

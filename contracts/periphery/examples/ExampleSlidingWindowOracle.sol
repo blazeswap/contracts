@@ -36,11 +36,7 @@ contract ExampleSlidingWindowOracle {
     // mapping from pair address to a list of price observations of that pair
     mapping(address => Observation[]) public pairObservations;
 
-    constructor(
-        address factory_,
-        uint256 windowSize_,
-        uint8 granularity_
-    ) {
+    constructor(address factory_, uint256 windowSize_, uint8 granularity_) {
         require(granularity_ > 1, 'SlidingWindowOracle: GRANULARITY');
         require(
             (periodSize = windowSize_ / granularity_) * granularity_ == windowSize_,
@@ -113,11 +109,7 @@ contract ExampleSlidingWindowOracle {
     // returns the amount out corresponding to the amount in for a given token using the moving average over the time
     // range [now - [windowSize, windowSize - periodSize * 2], now]
     // update must have been called for the bucket corresponding to timestamp `now - windowSize`
-    function consult(
-        address tokenIn,
-        uint256 amountIn,
-        address tokenOut
-    ) external view returns (uint256 amountOut) {
+    function consult(address tokenIn, uint256 amountIn, address tokenOut) external view returns (uint256 amountOut) {
         address pair = BlazeSwapLibrary.pairFor(factory, tokenIn, tokenOut);
         Observation storage firstObservation = getFirstObservationInWindow(pair);
 

@@ -13,12 +13,7 @@ interface IFtsoManager {
 
     function rewardEpochDurationSeconds() external view returns (uint256);
 
-    function rewardEpochs(uint256 _rewardEpochId)
-        external
-        view
-        returns (
-            uint256 _votepowerBlock,
-            uint256 _startBlock,
-            uint256 _startTimestamp
-        );
+    function rewardEpochs(
+        uint256 _rewardEpochId
+    ) external view returns (uint256 _votepowerBlock, uint256 _startBlock, uint256 _startTimestamp);
 }

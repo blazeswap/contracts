@@ -42,11 +42,7 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
         return (CACHED_CHAIN_ID == block.chainid) ? CACHED_DOMAIN_SEPARATOR : createDomainSeparator();
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 value
-    ) internal virtual {}
+    function _beforeTokenTransfer(address from, address to, uint256 value) internal virtual {}
 
     function _mint(address to, uint256 value) internal {
         _beforeTokenTransfer(address(0), to, value);
@@ -62,20 +58,12 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
         emit Transfer(from, address(0), value);
     }
 
-    function _approve(
-        address owner,
-        address spender,
-        uint256 value
-    ) private {
+    function _approve(address owner, address spender, uint256 value) private {
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);
     }
 
-    function _transfer(
-        address from,
-        address to,
-        uint256 value
-    ) private {
+    function _transfer(address from, address to, uint256 value) private {
         require(to != address(0), 'BlazeSwap: ZERO_ADDRESS');
         _beforeTokenTransfer(from, to, value);
         balanceOf[from] -= value;
@@ -93,11 +81,7 @@ contract BlazeSwapERC20 is IERC20, IERC20Metadata, IERC20Permit {
         return true;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool) {
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
         if (allowance[from][msg.sender] != type(uint256).max) {
             allowance[from][msg.sender] = allowance[from][msg.sender] - value;
         }

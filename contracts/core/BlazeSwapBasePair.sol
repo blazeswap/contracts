@@ -16,7 +16,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
     using UQ112x112 for uint224;
     using TransferHelper for address;
 
-    uint256 public constant MINIMUM_LIQUIDITY = 10**3;
+    uint256 public constant MINIMUM_LIQUIDITY = 10 ** 3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
     IBlazeSwapMath mc;
@@ -37,15 +37,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
     mapping(address => uint256) public pendingFeeShare;
     address[] private pendingFeeAccount;
 
-    function getReserves()
-        public
-        view
-        returns (
-            uint112 _reserve0,
-            uint112 _reserve1,
-            uint32 _blockTimestampLast
-        )
-    {
+    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
         _blockTimestampLast = blockTimestampLast;
@@ -56,11 +48,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
     }
 
     // called once by the factory at time of deployment
-    function initialize(
-        address _manager,
-        address _token0,
-        address _token1
-    ) public onlyParent {
+    function initialize(address _manager, address _token0, address _token1) public onlyParent {
         mc = IBlazeSwapMath(IBlazeSwapBaseManager(_manager).mathContext());
         manager = _manager;
         token0 = _token0;
@@ -68,16 +56,11 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
     }
 
     // update reserves and, on the first call per block, price accumulators
-    function _update(
-        uint256 balance0,
-        uint256 balance1,
-        uint112 _reserve0,
-        uint112 _reserve1
-    ) private {
+    function _update(uint256 balance0, uint256 balance1, uint112 _reserve0, uint112 _reserve1) private {
         require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, 'BlazeSwap: OVERFLOW');
         uint32 blockTimestamp;
         unchecked {
-            blockTimestamp = uint32(block.timestamp % 2**32);
+            blockTimestamp = uint32(block.timestamp % 2 ** 32);
             uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
             if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
                 // * never overflows, and + overflow is desired
@@ -196,11 +179,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
-    function _recordSwapFees(
-        uint112 oldReserve0,
-        uint112 oldReserve1,
-        bool splitFee
-    ) private {
+    function _recordSwapFees(uint112 oldReserve0, uint112 oldReserve1, bool splitFee) private {
         if (kLast != 0) {
             (uint112 newReserve0, uint112 newReserve1, ) = getReserves();
             uint256 feeShare = uint256(newReserve0) * newReserve1 - uint256(oldReserve0) * oldReserve1;
@@ -223,23 +202,13 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
         }
     }
 
-    function splitFeeSwap(
-        uint256 amount0Out,
-        uint256 amount1Out,
-        address to,
-        bytes calldata data
-    ) external {
+    function splitFeeSwap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external {
         (uint112 _reserve0, uint112 _reserve1, ) = getReserves();
         swapInternal(_reserve0, reserve1, amount0Out, amount1Out, to, data);
         _recordSwapFees(_reserve0, _reserve1, true);
     }
 
-    function swap(
-        uint256 amount0Out,
-        uint256 amount1Out,
-        address to,
-        bytes calldata data
-    ) external {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external {
         (uint112 _reserve0, uint112 _reserve1, ) = getReserves();
         swapInternal(_reserve0, reserve1, amount0Out, amount1Out, to, data);
         _recordSwapFees(_reserve0, _reserve1, false);
@@ -283,7 +252,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
             // scope for reserve{0,1}Adjusted, avoids stack too deep errors
             uint256 balance0Adjusted = balance0 * 1000 - amount0In * 3;
             uint256 balance1Adjusted = balance1 * 1000 - amount1In * 3;
-            require(balance0Adjusted * balance1Adjusted >= uint256(_reserve0) * _reserve1 * 1000**2, 'BlazeSwap: K');
+            require(balance0Adjusted * balance1Adjusted >= uint256(_reserve0) * _reserve1 * 1000 ** 2, 'BlazeSwap: K');
         }
         _update(balance0, balance1, _reserve0, _reserve1);
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);

@@ -29,11 +29,7 @@ contract FlareAsset is IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
     Snapshot[] private _totalSupplySnapshots;
     uint256 private _currentSnapshotId;
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals
-    ) {
+    constructor(string memory _name, string memory _symbol, uint8 _decimals) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -63,11 +59,7 @@ contract FlareAsset is IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) public returns (bool) {
+    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
         require(balanceOf[src] >= wad, '');
         _updateSnapshot(src, dst);
 
@@ -151,15 +143,12 @@ contract FlareAsset is IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
         return snapshotted ? value : totalSupply;
     }
 
-    function delegatesOf(address _owner)
+    function delegatesOf(
+        address _owner
+    )
         external
         view
-        returns (
-            address[] memory _delegateAddresses,
-            uint256[] memory _bips,
-            uint256 _count,
-            uint256 _delegationMode
-        )
+        returns (address[] memory _delegateAddresses, uint256[] memory _bips, uint256 _count, uint256 _delegationMode)
     {
         Delegated[] storage ds = delegation[_owner];
         if (ds.length > 0) {
@@ -174,15 +163,13 @@ contract FlareAsset is IERC20, IERC20Metadata, IERC20Snapshot, IVPToken {
         }
     }
 
-    function delegatesOfAt(address, uint256)
+    function delegatesOfAt(
+        address,
+        uint256
+    )
         external
         pure
-        returns (
-            address[] memory _delegateAddresses,
-            uint256[] memory _bips,
-            uint256 _count,
-            uint256 _delegationMode
-        )
+        returns (address[] memory _delegateAddresses, uint256[] memory _bips, uint256 _count, uint256 _delegationMode)
     {
         // mock
         _delegationMode = 1;
