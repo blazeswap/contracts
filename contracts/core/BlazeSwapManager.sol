@@ -41,15 +41,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         emit AddFtsoRewardManager(address(ftsoRewardManager));
     }
 
-    function getPreviousFtsoRewardManager(IFtsoRewardManager current) private view returns (IFtsoRewardManager) {
-        try current.oldFtsoRewardManager() returns (address previous) {
-            return IFtsoRewardManager(previous);
-        } catch {
-            // FtsoRewardManagerV1 without oldFtsoRewardManager
-            return IFtsoRewardManager(address(0));
-        }
-    }
-
     function getMissingFtsoRewardManagersUpTo(
         IFtsoRewardManager current,
         IFtsoRewardManager lastSaved,
@@ -61,7 +52,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         do {
             count++;
             require(count <= upTo, 'BlazeSwap: FTSO_REWARD_MANAGERS');
-            extra[count] = getPreviousFtsoRewardManager(extra[count - 1]);
+            extra[count] = IFtsoRewardManager(extra[count - 1].oldFtsoRewardManager());
         } while (extra[count] != lastSaved && address(extra[count]) != address(0));
         uint256 toDrop = extra.length - count;
         if (toDrop > 0) {

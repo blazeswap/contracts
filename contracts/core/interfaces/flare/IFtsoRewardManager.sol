@@ -29,7 +29,7 @@ interface IFtsoRewardManager {
         uint256[] calldata _rewardEpochs
     ) external returns (uint256 _rewardAmount);
 
-    function oldFtsoRewardManager() external view returns (address); // not currently available on Songbird
+    function oldFtsoRewardManager() external view returns (address);
 
     function getUnclaimedReward(
         uint256 _rewardEpoch,
