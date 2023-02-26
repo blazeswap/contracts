@@ -6,6 +6,7 @@ import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
 import BlazeSwapFtsoReward from '../../artifacts/contracts/core/BlazeSwapFtsoReward.sol/BlazeSwapFtsoReward.json'
+import FtsoRewardManagerABI from '../../artifacts/contracts/core/test/FtsoRewardManager.sol/FtsoRewardManager.json'
 
 import { Coder } from 'abi-coder'
 
@@ -20,13 +21,13 @@ import {
   FtsoRewardManager,
   IIBlazeSwapPluginImpl__factory,
   IWNat,
-  FtsoRewardManager__factory,
   IBlazeSwapExecutorManager__factory,
   IIBlazeSwapDelegation,
   IIBlazeSwapDelegation__factory,
+  FlareContractRegistry,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
+const { createFixtureLoader, deployContract } = waffle
 
 describe('BlazeSwapFtsoReward', () => {
   const provider = waffle.provider
@@ -34,6 +35,7 @@ describe('BlazeSwapFtsoReward', () => {
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let manager: IBlazeSwapManager
+  let registry: FlareContractRegistry
   let ftsoManager: FtsoManager
   let ftsoRewardManager: FtsoRewardManager
   let wNat: IWNat
@@ -45,6 +47,7 @@ describe('BlazeSwapFtsoReward', () => {
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
     manager = fixture.manager
+    registry = fixture.registry
     ftsoManager = fixture.ftsoManager
     ftsoRewardManager = fixture.ftsoRewardManager
     wNat = fixture.wNat
@@ -100,14 +103,24 @@ describe('BlazeSwapFtsoReward', () => {
     expect(await ftsoReward.accruingFtsoRewards(other.address)).to.eq(applyFee(expectedRewards).div(3))
   })
 
+  async function replaceFtsoRewardManager() {
+    const oldManager = await ftsoManager.rewardManager()
+    const newManager = (await deployContract(wallet, FtsoRewardManagerABI, [oldManager])) as FtsoRewardManager
+    await registry.setContractAddress('WNat', registry.getContractAddressByName('WNat'), [newManager.address])
+    await registry.setContractAddress('FtsoManager', ftsoManager.address, [newManager.address])
+    await registry.setContractAddress('FtsoRewardManager', newManager.address, [ftsoManager.address])
+    await newManager.initialize()
+    await newManager.activate()
+    return newManager
+  }
+
   it('accruingFtsoRewards:multiple', async () => {
     await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
     await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
     await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
     await ftsoRewardManager.addRewards(pair.address, 1, 1000)
 
-    await ftsoManager.replaceRewardManager()
-    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    const secondFtsoRewardManager = await replaceFtsoRewardManager()
     await secondFtsoRewardManager.addRewards(pair.address, 1, 2000)
 
     let expectedRewards = expandTo18Decimals(8 + 4)
@@ -173,8 +186,7 @@ describe('BlazeSwapFtsoReward', () => {
     await ftsoRewardManager.addRewards(pair.address, 1, 1000)
     await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
 
-    await ftsoManager.replaceRewardManager()
-    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    const secondFtsoRewardManager = await replaceFtsoRewardManager()
     await secondFtsoRewardManager.addRewards(pair.address, 2, 500)
 
     await ftsoManager.addRewardEpoch(3, (await provider.getBlock('latest')).number)
@@ -196,8 +208,7 @@ describe('BlazeSwapFtsoReward', () => {
     await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
     await ftsoRewardManager.addRewards(pair.address, 1, 500)
 
-    await ftsoManager.replaceRewardManager()
-    const secondFtsoRewardManager = FtsoRewardManager__factory.connect(await ftsoManager.rewardManager(), wallet)
+    const secondFtsoRewardManager = await replaceFtsoRewardManager()
     await secondFtsoRewardManager.addRewards(pair.address, 1, 500)
 
     await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)

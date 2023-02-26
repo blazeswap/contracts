@@ -66,10 +66,20 @@ describe('BlazeSwapFactory', () => {
     await createPair(TEST_ADDRESSES.slice().reverse() as [string, string])
   })
 
-  it('createPair:gas', async () => {
+  it('createPairGeneric:gas', async () => {
+    const tokens: [string, string] = [
+      '0x1000000000000000000000000000000000000001',
+      '0x1000000000000000000000000000000000000002',
+    ]
+    const tx = await factory.createPair(...tokens)
+    const receipt = await tx.wait()
+    expect(receipt.gasUsed).to.eq(4384455)
+  })
+
+  it('createPairWithWNat:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(6567030)
+    expect(receipt.gasUsed).to.eq(6956554)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {

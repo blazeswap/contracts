@@ -6,6 +6,7 @@ import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
 
 import BlazeSwapAirdrop from '../../artifacts/contracts/core/BlazeSwapAirdrop.sol/BlazeSwapAirdrop.json'
+import DistributionToDelegatorsABI from '../../artifacts/contracts/core/test/DistributionToDelegators.sol/DistributionToDelegators.json'
 
 import { Coder } from 'abi-coder'
 
@@ -19,13 +20,13 @@ import {
   IIBlazeSwapPluginImpl__factory,
   IWNat,
   IBlazeSwapExecutorManager__factory,
-  DistributionTreasury,
   DistributionToDelegators,
   IBlazeSwapAirdrop,
   IBlazeSwapAirdrop__factory,
+  FlareContractRegistry,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
+const { createFixtureLoader, deployContract } = waffle
 
 describe('BlazeSwapAirdrop', () => {
   const provider = waffle.provider
@@ -33,7 +34,7 @@ describe('BlazeSwapAirdrop', () => {
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let manager: IBlazeSwapManager
-  let distributionTreasury: DistributionTreasury
+  let registry: FlareContractRegistry
   let distribution: DistributionToDelegators
   let wNat: IWNat
   let token0: IERC20
@@ -44,7 +45,7 @@ describe('BlazeSwapAirdrop', () => {
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
     manager = fixture.manager
-    distributionTreasury = fixture.distributionTreasury
+    registry = fixture.registry
     distribution = fixture.distribution
     wNat = fixture.wNat
     token0 = fixture.token0
@@ -109,7 +110,7 @@ describe('BlazeSwapAirdrop', () => {
 
   describe('switch to DistributionToDelegators', () => {
     beforeEach(async () => {
-      await distributionTreasury.switchToDistributionToDelegators()
+      await registry.setContractAddress('DistributionToDelegators', distribution.address, [])
     })
 
     it('monthsWithUndistributedAirdrop', async () => {
@@ -151,6 +152,29 @@ describe('BlazeSwapAirdrop', () => {
       expect(totalAmounts).to.deep.eq([BigNumber.from('100')])
     })
 
+    it('monthsWithUndistributedAirdrop: stopped / replaced distribution', async () => {
+      await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
+      await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
+      const b0 = (await provider.getBlock('latest')).number
+      await distribution.setVotePowerBlockNumbers(0, [b0])
+      await distribution.addAirdrop(pair.address, 0, 20, { value: 20 })
+      const newDistribution = (await deployContract(wallet, DistributionToDelegatorsABI)) as DistributionToDelegators
+      await distribution.stop()
+
+      let [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(other.address)
+      expect(months).to.deep.eq([])
+      expect(amounts).to.deep.eq([])
+      expect(totalAmounts).to.deep.eq([])
+
+      await registry.setContractAddress('DistributionToDelegators', newDistribution.address, [])
+      await newDistribution.setVotePowerBlockNumbers(0, [b0])
+      await newDistribution.addAirdrop(pair.address, 0, 100, { value: 100 })
+      ;[months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(other.address)
+      expect(months).to.deep.eq([BigNumber.from('0')])
+      expect(amounts).to.deep.eq([BigNumber.from('50')])
+      expect(totalAmounts).to.deep.eq([BigNumber.from('100')])
+    })
+
     it('airdrop lasts 36 months', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
 
@@ -183,6 +207,35 @@ describe('BlazeSwapAirdrop', () => {
         .withArgs(BigNumber.from('1'), airdropAmount, wallet.address)
 
       expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(airdropAmount)
+    })
+
+    it('distributeAirdrop:previous-months', async () => {
+      const b0 = (await provider.getBlock('latest')).number
+
+      const airdropAmount1 = BigNumber.from('50')
+      await distribution.setVotePowerBlockNumbers(1, [b0])
+      await distribution.addAirdrop(pair.address, 1, airdropAmount1, { value: airdropAmount1 })
+
+      const b1 = (await provider.getBlock('latest')).number
+
+      const airdropAmount2 = BigNumber.from('100')
+      await distribution.setVotePowerBlockNumbers(2, [b1])
+      await distribution.addAirdrop(pair.address, 2, airdropAmount2, { value: airdropAmount2 })
+
+      const rewardManagerAddress = getRewardManagerAddress(pair.address)
+
+      await expect(airdrop.distributeAirdrop(2))
+        .to.emit(airdrop, 'AirdropDistributed')
+        .withArgs(BigNumber.from('1'), airdropAmount1, wallet.address)
+        .to.emit(airdrop, 'AirdropDistributed')
+        .withArgs(BigNumber.from('2'), airdropAmount2, wallet.address)
+
+      expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(airdropAmount1.add(airdropAmount2))
+
+      const [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(constants.AddressZero)
+      expect(months).to.deep.eq([])
+      expect(amounts).to.deep.eq([])
+      expect(totalAmounts).to.deep.eq([])
     })
 
     it('monthsWithUnclaimedAirdrop', async () => {
@@ -498,14 +551,14 @@ describe('BlazeSwapAirdrop', () => {
       expect(amounts[0]).to.gt(BigNumber.from('0'))
       expect(totalAmounts[0]).to.gt(BigNumber.from('0'))
 
-      const month = months[0]
+      const untilMonth = months[0]
       const to = wallet.address
       const wrapped = true
 
       const coder = new Coder(BlazeSwapAirdrop.abi)
       await expect(
         pair.multicall([
-          coder.encodeFunction('distributeAirdrop', { month }),
+          coder.encodeFunction('distributeAirdrop', { untilMonth }),
           coder.encodeFunction('claimAirdrops', { months, to, wrapped }),
         ])
       ).not.to.be.reverted

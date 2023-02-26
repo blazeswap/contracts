@@ -6,7 +6,7 @@ interface IBlazeSwapAirdrop {
     event AirdropDistributed(uint256 month, uint256 amount, address distributor);
     event AirdropClaimed(address indexed beneficiary, address to, uint256 month, uint256 amount, address executor);
 
-    function distributeAirdrop(uint256 month) external;
+    function distributeAirdrop(uint256 untilMonth) external;
 
     function monthsWithUndistributedAirdrop(
         address beneficiary

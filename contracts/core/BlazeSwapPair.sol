@@ -14,14 +14,14 @@ import './interfaces/IBlazeSwapPlugin.sol';
 import './interfaces/IIBlazeSwapPluginImpl.sol';
 import './interfaces/IIBlazeSwapDelegation.sol';
 
-import './libraries/BlazeSwapFlareLibrary.sol';
-
 library BlazeSwapPairStorage {
     struct Layout {
+        IBlazeSwapManager manager; // duplicated for easy/local access by plugins
         address token0; // duplicated for easy/local access by plugins
         address token1; // duplicated for easy/local access by plugins
         TokenType type0;
         TokenType type1;
+        IFlareContractRegistry flareContractRegistry;
         mapping(bytes4 => bool) supportedInterfaces;
         mapping(bytes4 => address) pluginSelector;
         address[] pluginImpls; // first for delegation, others for rewards
@@ -60,10 +60,12 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
     ) external onlyParent {
         initialize(_manager, _token0, _token1);
         BlazeSwapPairStorage.Layout storage l = BlazeSwapPairStorage.layout();
+        l.manager = IBlazeSwapManager(_manager);
         l.token0 = _token0;
         l.token1 = _token1;
         l.type0 = _type0;
         l.type1 = _type1;
+        l.flareContractRegistry = l.manager.flareContractRegistry();
     }
 
     function type0() external view returns (TokenType) {

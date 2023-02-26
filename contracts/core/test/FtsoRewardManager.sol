@@ -6,12 +6,15 @@ import '../interfaces/flare/IFtsoManager.sol';
 import '../interfaces/flare/IWNat.sol';
 import '../../shared/libraries/TransferHelper.sol';
 
-contract FtsoRewardManager is IFtsoRewardManager {
-    IFtsoManager private immutable ftsoManager;
+import './interfaces/IFlareAddressUpdatable.sol';
+
+contract FtsoRewardManager is IFtsoRewardManager, IFlareAddressUpdatable {
+    IFtsoManager private ftsoManager;
 
     bool public active;
+    uint256 public getInitialRewardEpoch;
 
-    address public immutable wNat;
+    address public wNat;
     address public immutable oldFtsoRewardManager;
 
     struct Reward {
@@ -21,23 +24,28 @@ contract FtsoRewardManager is IFtsoRewardManager {
     }
     mapping(address => Reward[]) private rewards;
 
-    constructor(address _wNat, address _oldFtsoRewardManager) {
-        active = true;
-        ftsoManager = IFtsoManager(msg.sender);
-        wNat = _wNat;
+    constructor(address _oldFtsoRewardManager) {
         oldFtsoRewardManager = _oldFtsoRewardManager;
     }
 
     receive() external payable {}
 
+    function initialize() external {
+        getInitialRewardEpoch = ftsoManager.getCurrentRewardEpoch();
+    }
+
+    function activate() external {
+        active = true;
+    }
+
+    function deactivate() external {
+        active = false;
+    }
+
     function addRewards(address _beneficiary, uint256 _epochId, uint256 _bips) external payable {
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(_epochId);
         uint256 balance = IWNat(wNat).balanceOfAt(_beneficiary, votePowerBlock);
         rewards[_beneficiary].push(Reward(_epochId, (balance * _bips) / 100_00, false));
-    }
-
-    function getRewardEpochToExpireNext() external view returns (uint256) {
-        return ftsoManager.getRewardEpochToExpireNext();
     }
 
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (uint256[] memory _epochIds) {
@@ -122,10 +130,6 @@ contract FtsoRewardManager is IFtsoRewardManager {
         }
     }
 
-    function deactivate() external {
-        active = false;
-    }
-
     function getUnclaimedReward(uint256, address) external pure returns (uint256, uint256) {
         revert('NOT IMPLEMENTED');
     }
@@ -141,4 +145,12 @@ contract FtsoRewardManager is IFtsoRewardManager {
         pure
         returns (uint256[] memory _feePercentageBIPS, uint256[] memory _validFromEpoch, bool[] memory _fixed)
     {}
+
+    function updateContractAddress(bytes32 _nameHash, address _address) external {
+        if (_nameHash == keccak256(abi.encode('WNat'))) {
+            wNat = _address;
+        } else if (_nameHash == keccak256(abi.encode('FtsoManager'))) {
+            ftsoManager = IFtsoManager(_address);
+        }
+    }
 }

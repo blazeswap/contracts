@@ -11,7 +11,6 @@ import '../shared/libraries/TransferHelper.sol';
 import '../shared/DelegatedCalls.sol';
 import '../shared/ReentrancyLock.sol';
 
-import './libraries/BlazeSwapFlareLibrary.sol';
 import './libraries/BlazeSwapRewardLibrary.sol';
 import './libraries/Math.sol';
 

@@ -7,7 +7,7 @@ interface IFtsoRewardManager {
 
     function wNat() external view returns (address);
 
-    function getRewardEpochToExpireNext() external view returns (uint256);
+    function getInitialRewardEpoch() external view returns (uint256);
 
     function getEpochsWithUnclaimedRewards(address _beneficiary) external view returns (uint256[] memory _epochIds);
 

@@ -9,7 +9,7 @@ import {
   BlazeSwapRewardManager,
   BlazeSwapRewardManager__factory,
   DistributionToDelegators,
-  DistributionTreasury,
+  FlareContractRegistry,
   FtsoManager,
   FtsoRewardManager,
   IWNat,
@@ -22,17 +22,17 @@ describe('BlazeSwapRewardManager', () => {
   const [wallet] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
 
+  let registry: FlareContractRegistry
   let ftsoManager: FtsoManager
   let ftsoRewardManager: FtsoRewardManager
-  let distributionTreasury: DistributionTreasury
   let distribution: DistributionToDelegators
   let wNat: IWNat
   let rewardManager: BlazeSwapRewardManager
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
+    registry = fixture.registry
     ftsoManager = fixture.ftsoManager
     ftsoRewardManager = fixture.ftsoRewardManager
-    distributionTreasury = fixture.distributionTreasury
     distribution = fixture.distribution
     wNat = fixture.wNat
     const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
@@ -72,7 +72,7 @@ describe('BlazeSwapRewardManager', () => {
     await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, BigNumber.from('0'))
     await expect(rewardManager.claimAirdrop(0)).not.to.be.reverted
 
-    await distributionTreasury.switchToDistributionToDelegators()
+    await registry.setContractAddress('DistributionToDelegators', distribution.address, [])
 
     const expectedAmount = BigNumber.from('100')
 

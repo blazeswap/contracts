@@ -5,7 +5,9 @@ pragma abicoder v2;
 interface IDistributionToDelegators {
     function votePowerBlockNumbers(uint256 _month) external view returns (uint256[] memory);
 
-    function getClaimableAmount(uint256 _month) external view returns (uint256 _amountWei);
+    function stopped() external view returns (bool);
+
+    function getClaimableAmount(uint256 _month) external view returns (uint256 _amountWei); // revert if not claimable
 
     function getClaimableAmountOf(address account, uint256 _month) external view returns (uint256 _amountWei);
 
@@ -15,5 +17,5 @@ interface IDistributionToDelegators {
 
     function getMonthToExpireNext() external view returns (uint256 _monthToExpireNext);
 
-    function secondsTillNextClaim() external view returns (uint256 _timetill);
+    function getClaimableMonths() external view returns (uint256 _startMonth, uint256 _endMonth); // revert if no claimable months
 }

@@ -5,8 +5,10 @@ import '../interfaces/flare/IDistributionToDelegators.sol';
 import '../interfaces/flare/IWNat.sol';
 import '../../shared/libraries/TransferHelper.sol';
 
-contract DistributionToDelegators is IDistributionToDelegators {
-    address public immutable wNat;
+import './interfaces/IFlareAddressUpdatable.sol';
+
+contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpdatable {
+    address public wNat;
 
     uint256 public getCurrentMonth;
     uint256 public getMonthToExpireNext;
@@ -18,12 +20,20 @@ contract DistributionToDelegators is IDistributionToDelegators {
     }
     mapping(address => Airdrop[]) private airdrops;
     mapping(uint256 => uint256[]) public votePowerBlocks;
-
-    constructor(address _wNat) {
-        wNat = _wNat;
-    }
+    bool public stopped;
 
     receive() external payable {}
+
+    function getClaimableMonths() external view returns (uint256 _startMonth, uint256 _endMonth) {
+        require(getCurrentMonth > 0, 'Distribution not started');
+        require(getMonthToExpireNext < 36, 'Distribution concluded');
+        _startMonth = getMonthToExpireNext;
+        _endMonth = (getCurrentMonth <= 36) ? getCurrentMonth - 1 : 35;
+    }
+
+    function stop() external {
+        stopped = true;
+    }
 
     function setVotePowerBlockNumbers(uint256 _month, uint256[] calldata _blocks) external {
         votePowerBlocks[_month] = _blocks;
@@ -34,12 +44,12 @@ contract DistributionToDelegators is IDistributionToDelegators {
         airdrops[_beneficiary].push(Airdrop(_month, _amount, false));
     }
 
-    function setMonthToExpireNext(uint256 _month) external {
-        getMonthToExpireNext = _month;
-    }
-
     function votePowerBlockNumbers(uint256 _month) external view returns (uint256[] memory) {
         return votePowerBlocks[_month];
+    }
+
+    function setMonthToExpireNext(uint256 _month) external {
+        getMonthToExpireNext = _month;
     }
 
     function getClaimableAmount(uint256 _month) external view returns (uint256 _amountWei) {
@@ -69,7 +79,9 @@ contract DistributionToDelegators is IDistributionToDelegators {
         }
     }
 
-    function secondsTillNextClaim() external pure returns (uint256 _timetill) {
-        _timetill = 0;
+    function updateContractAddress(bytes32 _nameHash, address _address) external {
+        if (_nameHash == keccak256(abi.encode('WNat'))) {
+            wNat = _address;
+        }
     }
 }

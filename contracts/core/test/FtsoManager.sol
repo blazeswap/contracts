@@ -2,29 +2,35 @@
 pragma solidity ^0.8.0;
 
 import '../interfaces/flare/IFtsoManager.sol';
-import './FtsoRewardManager.sol';
 
-contract FtsoManager is IFtsoManager {
+import './interfaces/IFlareAddressUpdatable.sol';
+
+contract FtsoManager is IFtsoManager, IFlareAddressUpdatable {
+    IFtsoManager public immutable oldFtsoManager;
+
     address public rewardManager;
 
     uint256 private currentRewardEpoch;
     mapping(uint256 => uint256) private rewardEpochVotePowerBlock;
     uint256 private rewardEpochToExpireNext;
 
-    constructor(address _wNat) {
-        rewardManager = address(new FtsoRewardManager(_wNat, address(0)));
-    }
+    bool private initialized;
 
-    function replaceRewardManager() external {
-        rewardManager = address(new FtsoRewardManager(FtsoRewardManager(payable(rewardManager)).wNat(), rewardManager));
+    constructor(address _oldFtsoManager) {
+        oldFtsoManager = IFtsoManager(_oldFtsoManager);
     }
 
     function addRewardEpoch(uint256 _rewardEpoch, uint256 _votePowerBlock) external {
         rewardEpochVotePowerBlock[_rewardEpoch] = _votePowerBlock;
-        currentRewardEpoch = _rewardEpoch;
+        currentRewardEpoch = _rewardEpoch + 1;
+    }
+
+    function initialize() external {
+        initialized = true;
     }
 
     function getCurrentRewardEpoch() external view returns (uint256) {
+        require(initialized, 'Not initialized');
         return currentRewardEpoch;
     }
 
@@ -46,5 +52,11 @@ contract FtsoManager is IFtsoManager {
 
     function rewardEpochs(uint256) external pure returns (uint256, uint256, uint256) {
         revert('NOT IMPLEMENTED');
+    }
+
+    function updateContractAddress(bytes32 _nameHash, address _address) external {
+        if (_nameHash == keccak256(abi.encode('FtsoRewardManager'))) {
+            rewardManager = _address;
+        }
     }
 }

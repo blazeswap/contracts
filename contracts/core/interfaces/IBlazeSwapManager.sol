@@ -2,18 +2,12 @@
 pragma solidity >=0.7.5;
 pragma abicoder v2;
 
-import './flare/IFtsoRewardManager.sol';
+import './flare/IFlareContractRegistry.sol';
 import './IBlazeSwapBaseManager.sol';
 import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
-    event AddFtsoRewardManager(address ftsoRewardManager);
-
-    function updateFtsoRewardManagers(uint256 upTo) external;
-
-    function getFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory);
-
-    function getActiveFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory);
+    function flareContractRegistry() external returns (IFlareContractRegistry);
 
     function setRewardsFeeTo(address _rewardsFeeTo) external;
 

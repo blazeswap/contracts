@@ -7,18 +7,23 @@ import './interfaces/flare/IWNat.sol';
 import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapDelegationPlugin.sol';
 import './interfaces/IIBlazeSwapRewardManager.sol';
-import './libraries/BlazeSwapFlareLibrary.sol';
 import './libraries/Delegator.sol';
+import './libraries/FlareLibrary.sol';
 
 contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
+    using FlareLibrary for IFlareContractRegistry;
+    using FlareLibrary for IFtsoManager;
     using Delegator for IWNat;
 
     IWNat private immutable wNat;
-    IBlazeSwapManager private immutable manager;
+    IFlareContractRegistry private immutable registry;
 
-    constructor(IWNat _wNat, IBlazeSwapManager _manager) {
-        wNat = _wNat;
-        manager = _manager;
+    uint256 private nextEpochToDistribute;
+
+    constructor(IFlareContractRegistry _registry) {
+        registry = _registry;
+        wNat = registry.getWNat();
+        nextEpochToDistribute = registry.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
     }
 
     receive() external payable {}
@@ -28,24 +33,38 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
     }
 
     function claimFtsoRewards(uint256[] calldata epochs) external returns (uint256 amount) {
-        IFtsoRewardManager[] memory ftsoRewardManagers = manager.getActiveFtsoRewardManagers();
-        for (uint256 i; i < ftsoRewardManagers.length; i++) {
-            try
-                BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager()).claimReward(
-                    payable(this),
-                    epochs
-                )
-            returns (uint256 partialAmount) {
-                amount += partialAmount;
-            } catch {
-                // ignore errors
+        if (epochs.length == 0) return 0;
+        uint256 maxEpoch = epochs[epochs.length - 1];
+        for (uint256 i = epochs.length - 1; i > 0; i--) {
+            uint256 epoch = epochs[i - 1];
+            if (epoch > maxEpoch) maxEpoch = epoch;
+        }
+        maxEpoch++; // exclusive upper boundary
+
+        FlareLibrary.Range memory epochsRange = registry.getFtsoManager().getActiveFtsoRewardEpochsExclusive(nextEpochToDistribute);
+
+        if (maxEpoch > epochsRange.end) maxEpoch = epochsRange.end;
+        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = registry.getActiveFtsoRewardManagers(
+            epochsRange.start > nextEpochToDistribute ? epochsRange.start : nextEpochToDistribute
+        );
+        for (uint256 i = ftsoRewardManagers.length; i > 0; i--) {
+            FlareLibrary.FtsoRewardManagerWithEpochs memory ftsoRewardManager = ftsoRewardManagers[i - 1];
+            if (ftsoRewardManager.initialRewardEpoch < maxEpoch) {
+                uint256[] memory singleEpoch = new uint256[](1);
+                singleEpoch[0] = (ftsoRewardManager.lastRewardEpoch < maxEpoch)
+                    ? ftsoRewardManager.lastRewardEpoch
+                    : maxEpoch - 1;
+                amount += ftsoRewardManager.rewardManager.claimReward(payable(this), singleEpoch);
+                if (singleEpoch[0] >= nextEpochToDistribute) {
+                    nextEpochToDistribute = singleEpoch[0] + 1;
+                }
             }
         }
         wrapRewards();
     }
 
     function claimAirdrop(uint256 month) external returns (uint256 amount) {
-        IDistributionToDelegators distribution = BlazeSwapFlareLibrary.getDistribution();
+        IDistributionToDelegators distribution = registry.getDistribution();
         if (address(distribution) != address(0)) {
             amount = distribution.claim(payable(this), month);
         }

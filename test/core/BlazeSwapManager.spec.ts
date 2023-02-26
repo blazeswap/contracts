@@ -8,11 +8,10 @@ import BlazeSwapFlareAssetRewardPlugin from '../../artifacts/contracts/core/Blaz
 import FlareAssetRegistry from '../../artifacts/contracts/core/test/FlareAssetRegistry.sol/FlareAssetRegistry.json'
 import FlareAssetTest from '../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
 import {
-  FtsoManager,
-  FtsoManager__factory,
-  FtsoRewardManager__factory,
+  FlareContractRegistry,
   IBlazeSwapManager,
   IWNat,
+  IWNat__factory,
 } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
@@ -23,13 +22,13 @@ describe('BlazeSwapManager', () => {
   const loadFixture = createFixtureLoader([wallet, other], provider)
 
   let manager: IBlazeSwapManager
+  let registry: FlareContractRegistry
   let wNat: IWNat
-  let ftsoManager: FtsoManager
   beforeEach(async () => {
     const fixture = await loadFixture(managerFixture)
     manager = fixture.manager
-    wNat = fixture.wNat
-    ftsoManager = FtsoManager__factory.connect(await fixture.priceSubmitter.getFtsoManager(), wallet)
+    registry = fixture.registry
+    wNat = IWNat__factory.connect(await registry.getContractAddressByName('WNat'), wallet)
   })
 
   it('rewardsFeeTo, ftsoRewardsFeeBips', async () => {
@@ -72,15 +71,9 @@ describe('BlazeSwapManager', () => {
     expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
-  it('executorManager, wNat, getFtsoRewardManagers, getActiveFtsoRewardManagers, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, flareAssetRegistry, allowFlareAssetPairsWithoutPlugin', async () => {
+  it('executorManager, wNat, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, flareAssetRegistry, allowFlareAssetPairsWithoutPlugin', async () => {
     expect(await manager.executorManager()).not.to.eq(constants.AddressZero)
     expect(await manager.wNat()).not.to.eq(constants.AddressZero)
-    const ftsoRewardManagers = await manager.getFtsoRewardManagers()
-    expect(ftsoRewardManagers.length).to.eq(1)
-    expect(ftsoRewardManagers[0]).not.to.eq(constants.AddressZero)
-    const activeFtsoRewardManagers = await manager.getActiveFtsoRewardManagers()
-    expect(activeFtsoRewardManagers.length).to.eq(1)
-    expect(activeFtsoRewardManagers[0]).not.to.eq(constants.AddressZero)
     expect(await manager.delegationPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.ftsoRewardPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.flareAssetRewardPlugin()).to.eq(constants.AddressZero)
@@ -94,51 +87,6 @@ describe('BlazeSwapManager', () => {
     await manager.setConfigSetter(other.address)
     expect(await manager.configSetter()).to.eq(other.address)
     await expect(manager.setConfigSetter(wallet.address)).to.be.revertedWith('Configurable: FORBIDDEN')
-  })
-
-  it('getFtsoRewardManagers, updateFtsoRewardManagers, getActiveFtsoRewardManagers', async () => {
-    const ftsoRewardManager1 = await ftsoManager.rewardManager()
-    await ftsoManager.replaceRewardManager()
-    const ftsoRewardManager2 = await ftsoManager.rewardManager()
-    let ftsoRewardManagers = await manager.getFtsoRewardManagers()
-    expect(ftsoRewardManagers.length).to.eq(2)
-    await ftsoManager.replaceRewardManager()
-    const ftsoRewardManager3 = await ftsoManager.rewardManager()
-
-    ftsoRewardManagers = await manager.getFtsoRewardManagers()
-    expect(ftsoRewardManagers.length).to.eq(3)
-    expect(ftsoRewardManagers).to.deep.eq([ftsoRewardManager1, ftsoRewardManager2, ftsoRewardManager3])
-
-    await ftsoManager.replaceRewardManager()
-    const ftsoRewardManager4 = await ftsoManager.rewardManager()
-    await expect(manager.getFtsoRewardManagers()).to.be.revertedWith('BlazeSwap: FTSO_REWARD_MANAGERS')
-
-    await expect(manager.updateFtsoRewardManagers(2)).to.be.revertedWith('BlazeSwap: FTSO_REWARD_MANAGERS')
-
-    await expect(manager.updateFtsoRewardManagers(3))
-      .to.emit(manager, 'AddFtsoRewardManager')
-      .withArgs(ftsoRewardManager2)
-      .to.emit(manager, 'AddFtsoRewardManager')
-      .withArgs(ftsoRewardManager3)
-      .to.emit(manager, 'AddFtsoRewardManager')
-      .withArgs(ftsoRewardManager4)
-
-    await expect(manager.updateFtsoRewardManagers(4)).not.to.be.reverted
-
-    ftsoRewardManagers = await manager.getFtsoRewardManagers()
-    expect(ftsoRewardManagers.length).to.eq(4)
-    expect(ftsoRewardManagers).to.deep.eq([
-      ftsoRewardManager1,
-      ftsoRewardManager2,
-      ftsoRewardManager3,
-      ftsoRewardManager4,
-    ])
-
-    await FtsoRewardManager__factory.connect(ftsoRewardManager1, wallet).deactivate()
-    await FtsoRewardManager__factory.connect(ftsoRewardManager3, wallet).deactivate()
-    ftsoRewardManagers = await manager.getActiveFtsoRewardManagers()
-    expect(ftsoRewardManagers.length).to.eq(2)
-    expect(ftsoRewardManagers).to.deep.eq([ftsoRewardManager2, ftsoRewardManager4])
   })
 
   it('setDelegationPlugin', async () => {

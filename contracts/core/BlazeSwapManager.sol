@@ -6,11 +6,15 @@ import './interfaces/flare/IFtsoRewardManager.sol';
 import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapPlugin.sol';
 import './interfaces/Enumerations.sol';
-import './libraries/BlazeSwapFlareLibrary.sol';
+import './libraries/FlareLibrary.sol';
 import './BlazeSwapBaseManager.sol';
 import './BlazeSwapExecutorManager.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
+    using FlareLibrary for IFlareContractRegistry;
+
+    IFlareContractRegistry public immutable flareContractRegistry;
+
     address public rewardsFeeTo;
 
     uint256 public ftsoRewardsFeeBips;
@@ -19,8 +23,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     address public immutable wNat;
     address public immutable executorManager;
-
-    IFtsoRewardManager[] private ftsoRewardManagers;
 
     address public flareAssetRegistry;
 
@@ -31,95 +33,10 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public flareAssetRewardPlugin;
     address public airdropPlugin;
 
-    constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
+    constructor(address _configSetter, address _flareContractRegistry) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
-        IFtsoRewardManager ftsoRewardManager = BlazeSwapFlareLibrary.getFtsoRewardManager(
-            BlazeSwapFlareLibrary.getFtsoManager()
-        );
-        wNat = ftsoRewardManager.wNat();
-        ftsoRewardManagers.push(ftsoRewardManager);
-        emit AddFtsoRewardManager(address(ftsoRewardManager));
-    }
-
-    function getMissingFtsoRewardManagersUpTo(
-        IFtsoRewardManager current,
-        IFtsoRewardManager lastSaved,
-        uint256 upTo
-    ) private view returns (IFtsoRewardManager[] memory extra) {
-        extra = new IFtsoRewardManager[](upTo + 1);
-        uint256 count;
-        extra[count] = current;
-        do {
-            count++;
-            require(count <= upTo, 'BlazeSwap: FTSO_REWARD_MANAGERS');
-            extra[count] = IFtsoRewardManager(extra[count - 1].oldFtsoRewardManager());
-        } while (extra[count] != lastSaved && address(extra[count]) != address(0));
-        uint256 toDrop = extra.length - count;
-        if (toDrop > 0) {
-            assembly {
-                // reduce array length
-                mstore(extra, sub(mload(extra), toDrop))
-            }
-        }
-    }
-
-    function updateFtsoRewardManagers(uint256 upTo) external {
-        IFtsoRewardManager lastSaved = ftsoRewardManagers[ftsoRewardManagers.length - 1];
-        IFtsoRewardManager current = BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager());
-        if (current != lastSaved) {
-            IFtsoRewardManager[] memory extra = getMissingFtsoRewardManagersUpTo(current, lastSaved, upTo);
-            for (uint256 i = extra.length; i > 0; i--) {
-                IFtsoRewardManager ftsoRewardManager = extra[i - 1];
-                ftsoRewardManagers.push(ftsoRewardManager);
-                emit AddFtsoRewardManager(address(ftsoRewardManager));
-            }
-        }
-    }
-
-    function getFtsoRewardManagers() public view returns (IFtsoRewardManager[] memory managers) {
-        IFtsoRewardManager lastSaved = ftsoRewardManagers[ftsoRewardManagers.length - 1];
-        IFtsoRewardManager current = BlazeSwapFlareLibrary.getFtsoRewardManager(BlazeSwapFlareLibrary.getFtsoManager());
-        if (current == lastSaved) {
-            // no changes
-            managers = ftsoRewardManagers;
-        } else {
-            // new ftso reward manager(s), handle up to 2 new
-            IFtsoRewardManager[] memory extra = getMissingFtsoRewardManagersUpTo(current, lastSaved, 2);
-            uint256 previousLen = ftsoRewardManagers.length;
-            uint256 extraLen = extra.length;
-            managers = new IFtsoRewardManager[](previousLen + extraLen);
-            for (uint256 i; i < previousLen; i++) {
-                managers[i] = ftsoRewardManagers[i];
-            }
-            for (uint256 i; i < extraLen; i++) {
-                managers[previousLen + i] = extra[extraLen - i - 1];
-            }
-        }
-    }
-
-    function getActiveFtsoRewardManagers() external view returns (IFtsoRewardManager[] memory managers) {
-        IFtsoRewardManager[] memory allManagers = getFtsoRewardManagers();
-        bool[] memory enabledStatus = new bool[](allManagers.length);
-        uint256 disabledCount;
-        for (uint256 i; i < allManagers.length; i++) {
-            bool active = allManagers[i].active();
-            if (active) {
-                enabledStatus[i] = true;
-            } else {
-                disabledCount++;
-            }
-        }
-        if (disabledCount == 0) {
-            managers = allManagers;
-        } else {
-            managers = new IFtsoRewardManager[](allManagers.length - disabledCount);
-            uint256 j;
-            for (uint256 i; i < allManagers.length; i++) {
-                if (enabledStatus[i]) {
-                    managers[j++] = allManagers[i];
-                }
-            }
-        }
+        flareContractRegistry = IFlareContractRegistry(_flareContractRegistry);
+        wNat = address(flareContractRegistry.getWNat());
     }
 
     function setRewardsFeeTo(address _rewardsFeeTo) external onlyConfigSetter {
