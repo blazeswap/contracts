@@ -11,19 +11,16 @@ import './libraries/Delegator.sol';
 import './libraries/FlareLibrary.sol';
 
 contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
-    using FlareLibrary for IFlareContractRegistry;
     using FlareLibrary for IFtsoManager;
     using Delegator for IWNat;
 
     IWNat private immutable wNat;
-    IFlareContractRegistry private immutable registry;
 
     uint256 private nextEpochToDistribute;
 
-    constructor(IFlareContractRegistry _registry) {
-        registry = _registry;
-        wNat = registry.getWNat();
-        nextEpochToDistribute = registry.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
+    constructor() {
+        wNat = FlareLibrary.getWNat();
+        nextEpochToDistribute = FlareLibrary.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
     }
 
     receive() external payable {}
@@ -41,10 +38,12 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
         }
         maxEpoch++; // exclusive upper boundary
 
-        FlareLibrary.Range memory epochsRange = registry.getFtsoManager().getActiveFtsoRewardEpochsExclusive(nextEpochToDistribute);
+        FlareLibrary.Range memory epochsRange = FlareLibrary.getFtsoManager().getActiveFtsoRewardEpochsExclusive(
+            nextEpochToDistribute
+        );
 
         if (maxEpoch > epochsRange.end) maxEpoch = epochsRange.end;
-        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = registry.getActiveFtsoRewardManagers(
+        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = FlareLibrary.getActiveFtsoRewardManagers(
             epochsRange.start > nextEpochToDistribute ? epochsRange.start : nextEpochToDistribute
         );
         for (uint256 i = ftsoRewardManagers.length; i > 0; i--) {
@@ -64,7 +63,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
     }
 
     function claimAirdrop(uint256 month) external returns (uint256 amount) {
-        IDistributionToDelegators distribution = registry.getDistribution();
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             amount = distribution.claim(payable(this), month);
         }

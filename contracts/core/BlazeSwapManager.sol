@@ -11,10 +11,6 @@ import './BlazeSwapBaseManager.sol';
 import './BlazeSwapExecutorManager.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
-    using FlareLibrary for IFlareContractRegistry;
-
-    IFlareContractRegistry public immutable flareContractRegistry;
-
     address public rewardsFeeTo;
 
     uint256 public ftsoRewardsFeeBips;
@@ -33,10 +29,9 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public flareAssetRewardPlugin;
     address public airdropPlugin;
 
-    constructor(address _configSetter, address _flareContractRegistry) BlazeSwapBaseManager(_configSetter) {
+    constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
-        flareContractRegistry = IFlareContractRegistry(_flareContractRegistry);
-        wNat = address(flareContractRegistry.getWNat());
+        wNat = address(FlareLibrary.getWNat());
     }
 
     function setRewardsFeeTo(address _rewardsFeeTo) external onlyConfigSetter {

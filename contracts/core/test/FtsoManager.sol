@@ -20,9 +20,9 @@ contract FtsoManager is IFtsoManager, IFlareAddressUpdatable {
         oldFtsoManager = IFtsoManager(_oldFtsoManager);
     }
 
-    function addRewardEpoch(uint256 _rewardEpoch, uint256 _votePowerBlock) external {
+    function startRewardEpoch(uint256 _rewardEpoch, uint256 _votePowerBlock) external {
         rewardEpochVotePowerBlock[_rewardEpoch] = _votePowerBlock;
-        currentRewardEpoch = _rewardEpoch + 1;
+        currentRewardEpoch = _rewardEpoch;
     }
 
     function initialize() external {

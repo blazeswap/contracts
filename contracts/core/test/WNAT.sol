@@ -92,10 +92,7 @@ contract WNAT is IWNat {
     }
 
     function _valueAt(uint256 snapshotId, Snapshot[] storage snapshots) private view returns (bool, uint256) {
-        require(snapshotId > 0 && snapshotId <= block.number, 'BlazeSwap: INVALID_SNAPSHOT_ID');
-
-        // not snapshotted, return false
-        if (snapshots.length == 0) return (false, 0);
+        require(snapshotId <= block.number, 'WNAT: INVALID_SNAPSHOT_ID');
 
         // find the first snapshots index with id > snapshotId in O(log(n))
         uint256 low;

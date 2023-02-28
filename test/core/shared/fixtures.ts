@@ -34,9 +34,12 @@ import {
   DistributionToDelegators,
   FlareAssetRegistry,
   FlareContractRegistry,
+  FlareContractRegistry__factory,
 } from '../../../typechain-types'
 
 const { deployContract } = waffle
+
+const FLARE_CONTRACT_REGISTRY = '0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019'
 
 export const TEST_ADDRESS = [
   '0x0000000000000000000000000000000000000001',
@@ -57,8 +60,9 @@ interface FlareFixture {
   flareAssetRegistry: FlareAssetRegistry
 }
 
-export async function flareFixture([wallet]: Wallet[], _: providers.Web3Provider): Promise<FlareFixture> {
-  const registry = (await deployContract(wallet, FlareContractRegistryABI)) as FlareContractRegistry
+export async function flareFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<FlareFixture> {
+  await provider.send('hardhat_setCode', [FLARE_CONTRACT_REGISTRY, FlareContractRegistryABI.deployedBytecode])
+  const registry = FlareContractRegistry__factory.connect(FLARE_CONTRACT_REGISTRY, wallet)
   const wNat = (await deployContract(wallet, WNAT)) as IWNat
   const ftsoManager = (await deployContract(wallet, FtsoManagerABI, [constants.AddressZero])) as FtsoManager
   const ftsoRewardManager = (await deployContract(wallet, FtsoRewardManagerABI, [
@@ -103,10 +107,7 @@ export async function managerFixture([wallet]: Wallet[], provider: providers.Web
     provider
   )
 
-  const manager = (await deployContract(wallet, BlazeSwapManager, [
-    wallet.address,
-    registry.address,
-  ])) as IBlazeSwapManager
+  const manager = (await deployContract(wallet, BlazeSwapManager, [wallet.address])) as IBlazeSwapManager
   const delegationPlugin = await deployContract(wallet, BlazeSwapDelegationPlugin, [manager.address])
   await delegationPlugin.setInitialProvider(TEST_PROVIDERS[0])
   await delegationPlugin.setMaxDelegatesByPercent(2)

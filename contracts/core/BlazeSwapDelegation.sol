@@ -52,18 +52,16 @@ contract BlazeSwapDelegation is
     ReentrancyLock,
     Configurable
 {
-    using FlareLibrary for IFlareContractRegistry;
     using FlareLibrary for IFtsoManager;
     using Delegator for IVPToken;
 
     function initialize(address _plugin) external onlyDelegatedCall {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IBlazeSwapDelegationPlugin plugin = IBlazeSwapDelegationPlugin(_plugin);
         l.plugin = plugin;
-        IWNat wNat = pl.flareContractRegistry.getWNat();
+        IWNat wNat = FlareLibrary.getWNat();
         l.wNat = wNat;
-        l.rewardManager = new BlazeSwapRewardManager(pl.flareContractRegistry);
+        l.rewardManager = new BlazeSwapRewardManager();
         address[] memory initialProviders = new address[](1);
         initialProviders[0] = plugin.initialProvider();
         changeProviders(l, initialProviders);
@@ -226,9 +224,8 @@ contract BlazeSwapDelegation is
         uint256 epoch,
         bool current
     ) private view returns (address[] memory delegatedProviders, uint256[] memory bips) {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        IFtsoManager ftsoManager = pl.flareContractRegistry.getFtsoManager();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         if (current) epoch = ftsoManager.getCurrentFtsoRewardEpoch();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
         (delegatedProviders, bips, , ) = l.wNat.delegatesOfAt(address(l.rewardManager), votePowerBlock);
@@ -296,7 +293,7 @@ contract BlazeSwapDelegation is
 
     function changeProviders(BlazeSwapDelegationStorage.Layout storage l, address[] memory newProviders) private {
         BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-        IFlareAssetRegistry registry = pl.flareContractRegistry.getFlareAssetRegistry();
+        IFlareAssetRegistry registry = FlareLibrary.getFlareAssetRegistry();
         changeProviders(registry, newProviders, pl.type0, pl.token0);
         changeProviders(registry, newProviders, pl.type1, pl.token1);
         l.rewardManager.changeProviders(newProviders);

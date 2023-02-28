@@ -22,7 +22,7 @@ library BlazeSwapLibrary {
                             hex'ff',
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            hex'756cbb6eff101e4623eb6c0c692a2460b05fa2ee1c49bd2aca74e1bc4b4fad55' // init code hash
+                            hex'338f0199ace91c16ea6ff109156145a68b9955119ef24e42e533ed21877a612f' // init code hash
                         )
                     )
                 )

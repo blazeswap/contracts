@@ -9,6 +9,9 @@ import '../interfaces/flare/IFtsoRewardManager.sol';
 import '../interfaces/flare/IWNat.sol';
 
 library FlareLibrary {
+    IFlareContractRegistry private constant registry =
+        IFlareContractRegistry(0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019);
+
     bytes32 private constant DistributionToDelegatorsHash = keccak256(abi.encode('DistributionToDelegators'));
     bytes32 private constant FlareAssetRegistryHash = keccak256(abi.encode('FlareAssetRegistry'));
     bytes32 private constant FtsoManagerHash = keccak256(abi.encode('FtsoManager'));
@@ -27,7 +30,7 @@ library FlareLibrary {
         uint256 len;
     }
 
-    function getDistribution(IFlareContractRegistry registry) internal view returns (IDistributionToDelegators) {
+    function getDistribution() internal view returns (IDistributionToDelegators) {
         return IDistributionToDelegators(registry.getContractAddressByHash(DistributionToDelegatorsHash));
     }
 
@@ -35,31 +38,30 @@ library FlareLibrary {
         require(a != address(0), 'FlareLibrary: ZERO_ADDRESS');
     }
 
-    function getFlareAssetRegistry(IFlareContractRegistry registry) internal view returns (IFlareAssetRegistry) {
+    function getFlareAssetRegistry() internal view returns (IFlareAssetRegistry) {
         address a = registry.getContractAddressByHash(FlareAssetRegistryHash);
         checkNotZero(a);
         return IFlareAssetRegistry(a);
     }
 
-    function getFtsoManager(IFlareContractRegistry registry) internal view returns (IFtsoManager) {
+    function getFtsoManager() internal view returns (IFtsoManager) {
         address a = registry.getContractAddressByHash(FtsoManagerHash);
         checkNotZero(a);
         return IFtsoManager(a);
     }
 
-    function getFtsoRewardManager(IFlareContractRegistry registry) internal view returns (IFtsoRewardManager) {
+    function getFtsoRewardManager() internal view returns (IFtsoRewardManager) {
         address a = registry.getContractAddressByHash(FtsoRewardManagerHash);
         checkNotZero(a);
         return IFtsoRewardManager(a);
     }
 
     function getActiveFtsoRewardManagers(
-        IFlareContractRegistry registry,
         uint256 backToEpoch
     ) internal view returns (FtsoRewardManagerWithEpochs[] memory) {
         uint256 maxLen = 20; // more than enough
         FtsoRewardManagerWithEpochs[] memory l = new FtsoRewardManagerWithEpochs[](maxLen);
-        IFtsoRewardManager cur = getFtsoRewardManager(registry);
+        IFtsoRewardManager cur = getFtsoRewardManager();
         uint256 count;
         uint256 lastRewardEpoch = type(uint256).max;
         bool first = true;
@@ -87,7 +89,7 @@ library FlareLibrary {
         return l;
     }
 
-    function getWNat(IFlareContractRegistry registry) internal view returns (IWNat) {
+    function getWNat() internal view returns (IWNat) {
         address a = registry.getContractAddressByHash(WNatHash);
         checkNotZero(a);
         return IWNat(a);

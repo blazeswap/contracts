@@ -43,14 +43,12 @@ library BlazeSwapAirdropStorage {
 }
 
 contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
-    using FlareLibrary for IFlareContractRegistry;
     using FlareLibrary for IDistributionToDelegators;
 
     function initialize(address) external onlyDelegatedCall {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
         BlazeSwapAirdropStorage.Layout storage l = BlazeSwapAirdropStorage.layout();
-        l.executorManager = IBlazeSwapExecutorManager(pl.manager.executorManager());
-        IDistributionToDelegators distribution = pl.flareContractRegistry.getDistribution();
+        l.executorManager = IBlazeSwapExecutorManager(BlazeSwapPairStorage.layout().manager.executorManager());
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             l.nextMonthToDistribute = distribution.getCurrentMonth();
         }
@@ -67,7 +65,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         uint256 airdropsFeeBips,
         address beneficiary
     ) private view returns (uint256 amount) {
-        IWNat wNat = BlazeSwapPairStorage.layout().flareContractRegistry.getWNat();
+        IWNat wNat = FlareLibrary.getWNat();
         uint256[] memory votePowerBlocks = distribution.votePowerBlockNumbers(month);
         uint256 votePower;
         uint256 beneficiaryVotePower;
@@ -94,14 +92,13 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         onlyDelegatedCall
         returns (uint256[] memory months, uint256[] memory amounts, uint256[] memory totalAmounts)
     {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-        IDistributionToDelegators distribution = pl.flareContractRegistry.getDistribution();
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             FlareLibrary.Range memory monthsRange = distribution.getActiveAirdropMonthsExclusive(
                 BlazeSwapAirdropStorage.layout().nextMonthToDistribute,
                 true
             );
-            uint256 airdropFeeBips = pl.manager.airdropFeeBips();
+            uint256 airdropFeeBips = BlazeSwapPairStorage.layout().manager.airdropFeeBips();
             months = new uint256[](monthsRange.len);
             amounts = new uint256[](monthsRange.len);
             totalAmounts = new uint256[](monthsRange.len);
@@ -134,16 +131,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
     }
 
     function distributeAirdrop(uint256 untilMonth) external lock onlyDelegatedCall {
-        IDistributionToDelegators distribution;
-        IWNat wNat;
-        uint256 airdropFeeBips;
-        {
-            // avoid stack too deep error
-            BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-            distribution = pl.flareContractRegistry.getDistribution();
-            wNat = pl.flareContractRegistry.getWNat();
-            airdropFeeBips = pl.manager.airdropFeeBips();
-        }
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             BlazeSwapAirdropStorage.Layout storage l = BlazeSwapAirdropStorage.layout();
             uint256 endMonthExclusive = untilMonth + 1;
@@ -152,8 +140,9 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
                 true
             );
             if (endMonthExclusive > monthsRange.end) endMonthExclusive = monthsRange.end;
+            IWNat wNat = FlareLibrary.getWNat();
             address payable rewardManagerAddress = BlazeSwapRewardLibrary.rewardManagerFor(address(this));
-
+            uint256 airdropFeeBips = BlazeSwapPairStorage.layout().manager.airdropFeeBips();
             uint256 totalAmount;
             for (uint256 month = monthsRange.start; month < endMonthExclusive; month++) {
                 uint256 monthAmount = distribution.claim(rewardManagerAddress, month);
@@ -214,7 +203,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
     function monthsWithUnclaimedAirdrop(
         address beneficiary
     ) external view onlyDelegatedCall returns (uint256[] memory months, uint256[] memory amounts) {
-        IDistributionToDelegators distribution = BlazeSwapPairStorage.layout().flareContractRegistry.getDistribution();
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             FlareLibrary.Range memory monthsRange = distribution.getActiveAirdropMonthsExclusive(0, false);
             months = new uint256[](monthsRange.len);
@@ -261,7 +250,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         address executor,
         bool wrapped
     ) private {
-        IDistributionToDelegators distribution = BlazeSwapPairStorage.layout().flareContractRegistry.getDistribution();
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             FlareLibrary.Range memory monthsRange = distribution.getActiveAirdropMonthsExclusive(0, false);
             uint256 totalAmount;
@@ -310,7 +299,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
     }
 
     function unclaimedRewards() public view onlyDelegatedCall returns (uint256 totalRewards) {
-        IDistributionToDelegators distribution = BlazeSwapPairStorage.layout().flareContractRegistry.getDistribution();
+        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             BlazeSwapAirdropStorage.Layout storage l = BlazeSwapAirdropStorage.layout();
             FlareLibrary.Range memory monthsRange = distribution.getActiveAirdropMonthsExclusive(0, false);

@@ -7,8 +7,6 @@ import './IBlazeSwapBaseManager.sol';
 import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
-    function flareContractRegistry() external returns (IFlareContractRegistry);
-
     function setRewardsFeeTo(address _rewardsFeeTo) external;
 
     function rewardsFeeTo() external view returns (address);

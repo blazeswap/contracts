@@ -40,14 +40,12 @@ library BlazeSwapFtsoRewardStorage {
 }
 
 contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
-    using FlareLibrary for IFlareContractRegistry;
     using FlareLibrary for IFtsoManager;
 
     function initialize(address) external onlyDelegatedCall {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
-        l.executorManager = IBlazeSwapExecutorManager(pl.manager.executorManager());
-        l.nextEpochToDistribute = pl.flareContractRegistry.getFtsoManager().getCurrentFtsoRewardEpoch();
+        l.executorManager = IBlazeSwapExecutorManager(BlazeSwapPairStorage.layout().manager.executorManager());
+        l.nextEpochToDistribute = FlareLibrary.getFtsoManager().getCurrentFtsoRewardEpoch();
     }
 
     function applyFee(uint256 amount, uint256 bips) private pure returns (uint256) {
@@ -71,13 +69,12 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
     }
 
     function accruingFtsoRewards(address beneficiary) external view onlyDelegatedCall returns (uint256 amount) {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-        IFtsoManager ftsoManager = pl.flareContractRegistry.getFtsoManager();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         uint256 epoch = ftsoManager.getCurrentFtsoRewardEpoch();
-        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = pl
-            .flareContractRegistry
-            .getActiveFtsoRewardManagers(epoch);
-        uint256 rewardsFeeBips = pl.manager.ftsoRewardsFeeBips();
+        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = FlareLibrary.getActiveFtsoRewardManagers(
+            epoch
+        );
+        uint256 rewardsFeeBips = BlazeSwapPairStorage.layout().manager.ftsoRewardsFeeBips();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
         uint256 votePower = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
         uint256 beneficiaryVotePower = (beneficiary != address(0))
@@ -106,18 +103,11 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         onlyDelegatedCall
         returns (uint256[] memory epochs, uint256[] memory amounts, uint256[] memory totalAmounts)
     {
-        IFtsoManager ftsoManager;
-        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers;
-        uint256 rewardsFeeBips;
-        {
-            // avoid stack too deep error
-            BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-            ftsoManager = pl.flareContractRegistry.getFtsoManager();
-            ftsoRewardManagers = pl.flareContractRegistry.getActiveFtsoRewardManagers(
-                BlazeSwapFtsoRewardStorage.layout().nextEpochToDistribute
-            );
-            rewardsFeeBips = pl.manager.ftsoRewardsFeeBips();
-        }
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
+        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = FlareLibrary.getActiveFtsoRewardManagers(
+            BlazeSwapFtsoRewardStorage.layout().nextEpochToDistribute
+        );
+        uint256 rewardsFeeBips = BlazeSwapPairStorage.layout().manager.ftsoRewardsFeeBips();
         FlareLibrary.Range memory epochsRange = ftsoManager.getActiveFtsoRewardEpochsExclusive(
             BlazeSwapFtsoRewardStorage.layout().nextEpochToDistribute
         );
@@ -167,13 +157,12 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
 
     function distributeFtsoRewards(uint256[] calldata epochs) external lock onlyDelegatedCall {
         if (epochs.length == 0) return;
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
-        IFtsoManager ftsoManager = pl.flareContractRegistry.getFtsoManager();
-        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = pl
-            .flareContractRegistry
-            .getActiveFtsoRewardManagers(l.nextEpochToDistribute);
-        uint256 rewardsFeeBips = pl.manager.ftsoRewardsFeeBips();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
+        FlareLibrary.FtsoRewardManagerWithEpochs[] memory ftsoRewardManagers = FlareLibrary.getActiveFtsoRewardManagers(
+            l.nextEpochToDistribute
+        );
+        uint256 rewardsFeeBips = BlazeSwapPairStorage.layout().manager.ftsoRewardsFeeBips();
         uint256 totalRewards;
         address payable rewardManagerAddress = BlazeSwapRewardLibrary.rewardManagerFor(address(this));
         uint256 maxEpoch = epochs[epochs.length - 1];
@@ -237,7 +226,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         address beneficiary
     ) external view onlyDelegatedCall returns (uint256[] memory epochs, uint256[] memory amounts) {
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
-        IFtsoManager ftsoManager = BlazeSwapPairStorage.layout().flareContractRegistry.getFtsoManager();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         FlareLibrary.Range memory epochsRange = ftsoManager.getActiveFtsoRewardEpochsExclusive(0);
         epochs = new uint256[](epochsRange.len);
         amounts = new uint256[](epochsRange.len);
@@ -288,7 +277,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         address executor,
         bool wrapped
     ) private {
-        IFtsoManager ftsoManager = BlazeSwapPairStorage.layout().flareContractRegistry.getFtsoManager();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         FlareLibrary.Range memory epochsRange = ftsoManager.getActiveFtsoRewardEpochsExclusive(0);
         uint256 totalRewards;
         for (uint256 i; i < epochs.length; i++) {
@@ -337,7 +326,7 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
 
     function unclaimedRewards() public view onlyDelegatedCall returns (uint256 totalRewards) {
         BlazeSwapFtsoRewardStorage.Layout storage l = BlazeSwapFtsoRewardStorage.layout();
-        IFtsoManager ftsoManager = BlazeSwapPairStorage.layout().flareContractRegistry.getFtsoManager();
+        IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         FlareLibrary.Range memory epochsRange = ftsoManager.getActiveFtsoRewardEpochsExclusive(0);
         for (uint256 epoch = epochsRange.start; epoch < epochsRange.end; epoch++) {
             totalRewards += l.pendingRewards[epoch].remainingAmount;

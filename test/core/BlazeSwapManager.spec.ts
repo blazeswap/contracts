@@ -7,12 +7,7 @@ import { managerFixture, TEST_ADDRESS } from './shared/fixtures'
 import BlazeSwapFlareAssetRewardPlugin from '../../artifacts/contracts/core/BlazeSwapFlareAssetRewardPlugin.sol/BlazeSwapFlareAssetRewardPlugin.json'
 import FlareAssetRegistry from '../../artifacts/contracts/core/test/FlareAssetRegistry.sol/FlareAssetRegistry.json'
 import FlareAssetTest from '../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
-import {
-  FlareContractRegistry,
-  IBlazeSwapManager,
-  IWNat,
-  IWNat__factory,
-} from '../../typechain-types'
+import { FlareContractRegistry, IBlazeSwapManager, IWNat, IWNat__factory } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
 

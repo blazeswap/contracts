@@ -52,9 +52,9 @@ describe('BlazeSwapRewardManager', () => {
     const wNatAmount = expandTo18Decimals(10)
     await wNat.transfer(rewardManager.address, wNatAmount)
 
-    await ftsoManager.addRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)
     await ftsoRewardManager.addRewards(rewardManager.address, 1, 10)
-    await ftsoManager.addRewardEpoch(2, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(2, (await provider.getBlock('latest')).number)
 
     expect(await ftsoRewardManager.getEpochsWithUnclaimedRewards(rewardManager.address)).to.deep.eq([
       BigNumber.from('1'),
