@@ -24,6 +24,8 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     bool public allowFlareAssetPairsWithoutPlugin;
 
+    address public rewardManager;
+
     address public delegationPlugin;
     address public ftsoRewardPlugin;
     address public flareAssetRewardPlugin;
@@ -55,6 +57,11 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     function revertAlreadySet() internal pure {
         revert('BlazeSwap: ALREADY_SET');
+    }
+
+    function setRewardManager(address _rewardManager) external onlyConfigSetter {
+        if (rewardManager != address(0)) revertAlreadySet();
+        rewardManager = _rewardManager;
     }
 
     function setDelegationPlugin(address _delegationPlugin) external onlyConfigSetter {

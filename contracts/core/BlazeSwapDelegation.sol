@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import '../shared/libraries/CloneHelper.sol';
 import '../shared/libraries/DelegateCallHelper.sol';
 import '../shared/Configurable.sol';
 import '../shared/DelegatedCalls.sol';
@@ -12,11 +13,12 @@ import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapPair.sol';
 import './interfaces/IIBlazeSwapDelegation.sol';
 import './interfaces/IIBlazeSwapReward.sol';
+import './interfaces/IIBlazeSwapRewardManager.sol';
 import './interfaces/flare/IFlareAssetRegistry.sol';
 import './interfaces/flare/IWNat.sol';
 import './libraries/BlazeSwapRewardLibrary.sol';
+import './libraries/FlareLibrary.sol';
 import './libraries/Delegator.sol';
-import './BlazeSwapRewardManager.sol';
 import './BlazeSwapPair.sol';
 
 library BlazeSwapDelegationStorage {
@@ -45,13 +47,7 @@ library BlazeSwapDelegationStorage {
     }
 }
 
-contract BlazeSwapDelegation is
-    IBlazeSwapDelegation,
-    IIBlazeSwapDelegation,
-    DelegatedCalls,
-    ReentrancyLock,
-    Configurable
-{
+contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, DelegatedCalls, ReentrancyLock {
     using FlareLibrary for IFtsoManager;
     using Delegator for IVPToken;
 
@@ -59,9 +55,11 @@ contract BlazeSwapDelegation is
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IBlazeSwapDelegationPlugin plugin = IBlazeSwapDelegationPlugin(_plugin);
         l.plugin = plugin;
-        IWNat wNat = FlareLibrary.getWNat();
-        l.wNat = wNat;
-        l.rewardManager = new BlazeSwapRewardManager();
+        l.wNat = FlareLibrary.getWNat();
+        l.rewardManager = IIBlazeSwapRewardManager(
+            CloneHelper.clone(BlazeSwapPairStorage.layout().manager.rewardManager())
+        );
+        l.rewardManager.initialize();
         address[] memory initialProviders = new address[](1);
         initialProviders[0] = plugin.initialProvider();
         changeProviders(l, initialProviders);

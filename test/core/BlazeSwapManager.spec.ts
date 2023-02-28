@@ -66,9 +66,10 @@ describe('BlazeSwapManager', () => {
     expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
-  it('executorManager, wNat, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, flareAssetRegistry, allowFlareAssetPairsWithoutPlugin', async () => {
+  it('executorManager, wNat, rewardManager, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, flareAssetRegistry, allowFlareAssetPairsWithoutPlugin', async () => {
     expect(await manager.executorManager()).not.to.eq(constants.AddressZero)
     expect(await manager.wNat()).not.to.eq(constants.AddressZero)
+    expect(await manager.rewardManager()).not.to.eq(constants.AddressZero)
     expect(await manager.delegationPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.ftsoRewardPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.flareAssetRewardPlugin()).to.eq(constants.AddressZero)
@@ -82,6 +83,10 @@ describe('BlazeSwapManager', () => {
     await manager.setConfigSetter(other.address)
     expect(await manager.configSetter()).to.eq(other.address)
     await expect(manager.setConfigSetter(wallet.address)).to.be.revertedWith('Configurable: FORBIDDEN')
+  })
+
+  it('setRewardManager', async () => {
+    await expect(manager.setRewardManager(other.address)).to.be.revertedWith('BlazeSwap: ALREADY_SET')
   })
 
   it('setDelegationPlugin', async () => {

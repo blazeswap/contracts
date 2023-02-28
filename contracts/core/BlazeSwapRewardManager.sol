@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import '../shared/libraries/TransferHelper.sol';
+import '../shared/DelegatedCalls.sol';
 import '../shared/ParentRelation.sol';
 import './interfaces/flare/IWNat.sol';
 import './interfaces/IBlazeSwapManager.sol';
@@ -10,26 +11,31 @@ import './interfaces/IIBlazeSwapRewardManager.sol';
 import './libraries/Delegator.sol';
 import './libraries/FlareLibrary.sol';
 
-contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
+contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, ParentRelation {
     using FlareLibrary for IFtsoManager;
     using Delegator for IWNat;
 
-    IWNat private immutable wNat;
+    bool private initialized;
+
+    IWNat private wNat;
 
     uint256 private nextEpochToDistribute;
 
-    constructor() {
+    function initialize() external onlyDelegatedCall {
+        require(!initialized, 'BlazeSwapRewardManager: INITIALIZED');
+        initParentRelation(msg.sender);
         wNat = FlareLibrary.getWNat();
         nextEpochToDistribute = FlareLibrary.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
+        initialized = true;
     }
 
-    receive() external payable {}
+    receive() external payable onlyDelegatedCall {}
 
-    function changeProviders(address[] calldata providers) external onlyParent {
+    function changeProviders(address[] calldata providers) external onlyDelegatedCall onlyParent {
         wNat.changeProviders(providers, type(uint256).max);
     }
 
-    function claimFtsoRewards(uint256[] calldata epochs) external returns (uint256 amount) {
+    function claimFtsoRewards(uint256[] calldata epochs) external onlyDelegatedCall returns (uint256 amount) {
         if (epochs.length == 0) return 0;
         uint256 maxEpoch = epochs[epochs.length - 1];
         for (uint256 i = epochs.length - 1; i > 0; i--) {
@@ -62,7 +68,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
         wrapRewards();
     }
 
-    function claimAirdrop(uint256 month) external returns (uint256 amount) {
+    function claimAirdrop(uint256 month) external onlyDelegatedCall returns (uint256 amount) {
         IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             amount = distribution.claim(payable(this), month);
@@ -70,12 +76,12 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, ParentRelation {
         wrapRewards();
     }
 
-    function wrapRewards() public {
+    function wrapRewards() public onlyDelegatedCall {
         if (address(this).balance > 0) wNat.depositTo{value: address(this).balance}(address(this));
     }
 
     // re-entrancy check in parent
-    function sendRewards(address to, uint256 amount, bool unwrap) external onlyParent {
+    function sendRewards(address to, uint256 amount, bool unwrap) external onlyDelegatedCall onlyParent {
         if (unwrap) {
             wNat.withdraw(amount);
             TransferHelper.safeTransferNAT(to, amount);

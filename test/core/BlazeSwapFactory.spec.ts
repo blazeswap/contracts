@@ -73,13 +73,13 @@ describe('BlazeSwapFactory', () => {
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(4322425)
+    expect(receipt.gasUsed).to.eq(4322513)
   })
 
   it('createPairWithWNat:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(6873616)
+    expect(receipt.gasUsed).to.eq(5599846)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {

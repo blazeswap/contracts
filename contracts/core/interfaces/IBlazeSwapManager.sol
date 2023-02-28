@@ -29,6 +29,8 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function getTokenType(address token) external view returns (TokenType tokenType);
 
+    function rewardManager() external view returns (address);
+
     function delegationPlugin() external view returns (address);
 
     function ftsoRewardPlugin() external view returns (address);
@@ -44,6 +46,8 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
     function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external;
 
     function allowFlareAssetPairsWithoutPlugin() external view returns (bool);
+
+    function setRewardManager(address _rewardManager) external;
 
     function setDelegationPlugin(address _delegationPlugin) external;
 

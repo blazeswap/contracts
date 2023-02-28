@@ -14,6 +14,7 @@ import DistributionToDelegatorsABI from '../../../artifacts/contracts/core/test/
 import BlazeSwapAirdropPlugin from '../../../artifacts/contracts/core/BlazeSwapAirdropPlugin.sol/BlazeSwapAirdropPlugin.json'
 import BlazeSwapDelegationPlugin from '../../../artifacts/contracts/core/BlazeSwapDelegationPlugin.sol/BlazeSwapDelegationPlugin.json'
 import BlazeSwapFtsoRewardPlugin from '../../../artifacts/contracts/core/BlazeSwapFtsoRewardPlugin.sol/BlazeSwapFtsoRewardPlugin.json'
+import BlazeSwapRewardManager from '../../../artifacts/contracts/core/BlazeSwapRewardManager.sol/BlazeSwapRewardManager.json'
 import FlareAssetRegistryABI from '../../../artifacts/contracts/core/test/FlareAssetRegistry.sol/FlareAssetRegistry.json'
 import FlareContractRegistryABI from '../../../artifacts/contracts/core/test/FlareContractRegistry.sol/FlareContractRegistry.json'
 import FtsoManagerABI from '../../../artifacts/contracts/core/test/FtsoManager.sol/FtsoManager.json'
@@ -108,6 +109,8 @@ export async function managerFixture([wallet]: Wallet[], provider: providers.Web
   )
 
   const manager = (await deployContract(wallet, BlazeSwapManager, [wallet.address])) as IBlazeSwapManager
+  const rewardManager = await deployContract(wallet, BlazeSwapRewardManager)
+  await manager.setRewardManager(rewardManager.address)
   const delegationPlugin = await deployContract(wallet, BlazeSwapDelegationPlugin, [manager.address])
   await delegationPlugin.setInitialProvider(TEST_PROVIDERS[0])
   await delegationPlugin.setMaxDelegatesByPercent(2)

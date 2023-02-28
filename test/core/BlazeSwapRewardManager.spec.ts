@@ -27,6 +27,7 @@ describe('BlazeSwapRewardManager', () => {
   let ftsoRewardManager: FtsoRewardManager
   let distribution: DistributionToDelegators
   let wNat: IWNat
+  let rewardManagerClonable: BlazeSwapRewardManager
   let rewardManager: BlazeSwapRewardManager
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
@@ -35,8 +36,17 @@ describe('BlazeSwapRewardManager', () => {
     ftsoRewardManager = fixture.ftsoRewardManager
     distribution = fixture.distribution
     wNat = fixture.wNat
+    rewardManagerClonable = BlazeSwapRewardManager__factory.connect(fixture.manager.rewardManager(), wallet)
     const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
     rewardManager = BlazeSwapRewardManager__factory.connect(rewardManagerAddress, wallet)
+  })
+
+  it('initialize:clonable', async () => {
+    await expect(rewardManagerClonable.initialize()).to.be.revertedWith('DelegatedCalls: standard call')
+  })
+
+  it('initialize:twice', async () => {
+    await expect(rewardManager.initialize()).to.be.revertedWith('BlazeSwapRewardManager: INITIALIZED')
   })
 
   it('changeProviders', async () => {
