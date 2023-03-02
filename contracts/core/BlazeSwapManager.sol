@@ -20,8 +20,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     address public immutable wNat;
     address public immutable executorManager;
 
-    address public flareAssetRegistry;
-
     bool public allowFlareAssetPairsWithoutPlugin;
 
     address public rewardManager;
@@ -86,7 +84,8 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     }
 
     function isFlareAsset(address token) private view returns (bool) {
-        return flareAssetRegistry != address(0) && IFlareAssetRegistry(flareAssetRegistry).isFlareAsset(token);
+        IFlareAssetRegistry registry = FlareLibrary.getFlareAssetRegistry();
+        return address(registry) != address(0) && registry.isFlareAsset(token);
     }
 
     function isWNat(address token) private view returns (bool) {
@@ -97,10 +96,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         if (isWNat(token)) tokenType = TokenType.WNat;
         else if (isFlareAsset(token)) tokenType = TokenType.FlareAsset;
         else tokenType = TokenType.Generic;
-    }
-
-    function setFlareAssetRegistry(address _flareAssetRegistry) external onlyConfigSetter {
-        flareAssetRegistry = _flareAssetRegistry;
     }
 
     function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external onlyConfigSetter {
@@ -116,7 +111,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     }
 
     function flareAssetSupport() external view returns (FlareAssetSupport) {
-        if (flareAssetRegistry == address(0)) return FlareAssetSupport.None;
+        if (address(FlareLibrary.getFlareAssetRegistry()) == address(0)) return FlareAssetSupport.None;
         if (flareAssetRewardPlugin != address(0)) return FlareAssetSupport.Full;
         return allowFlareAssetPairsWithoutPlugin ? FlareAssetSupport.Minimal : FlareAssetSupport.None;
     }

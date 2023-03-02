@@ -2,12 +2,17 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { constants } from 'ethers'
 
-import { managerFixture, TEST_ADDRESS } from './shared/fixtures'
+import { managerFixture } from './shared/fixtures'
 
 import BlazeSwapFlareAssetRewardPlugin from '../../artifacts/contracts/core/BlazeSwapFlareAssetRewardPlugin.sol/BlazeSwapFlareAssetRewardPlugin.json'
-import FlareAssetRegistry from '../../artifacts/contracts/core/test/FlareAssetRegistry.sol/FlareAssetRegistry.json'
 import FlareAssetTest from '../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
-import { FlareContractRegistry, IBlazeSwapManager, IWNat, IWNat__factory } from '../../typechain-types'
+import {
+  FlareAssetRegistry,
+  FlareContractRegistry,
+  IBlazeSwapManager,
+  IWNat,
+  IWNat__factory,
+} from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
 
@@ -18,11 +23,13 @@ describe('BlazeSwapManager', () => {
 
   let manager: IBlazeSwapManager
   let registry: FlareContractRegistry
+  let flareAssetRegistry: FlareAssetRegistry
   let wNat: IWNat
   beforeEach(async () => {
     const fixture = await loadFixture(managerFixture)
     manager = fixture.manager
     registry = fixture.registry
+    flareAssetRegistry = fixture.flareAssetRegistry
     wNat = IWNat__factory.connect(await registry.getContractAddressByName('WNat'), wallet)
   })
 
@@ -66,7 +73,7 @@ describe('BlazeSwapManager', () => {
     expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
-  it('executorManager, wNat, rewardManager, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, flareAssetRegistry, allowFlareAssetPairsWithoutPlugin', async () => {
+  it('executorManager, wNat, rewardManager, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, allowFlareAssetPairsWithoutPlugin', async () => {
     expect(await manager.executorManager()).not.to.eq(constants.AddressZero)
     expect(await manager.wNat()).not.to.eq(constants.AddressZero)
     expect(await manager.rewardManager()).not.to.eq(constants.AddressZero)
@@ -74,7 +81,6 @@ describe('BlazeSwapManager', () => {
     expect(await manager.ftsoRewardPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.flareAssetRewardPlugin()).to.eq(constants.AddressZero)
     expect(await manager.airdropPlugin()).not.to.eq(constants.AddressZero)
-    expect(await manager.flareAssetRegistry()).to.eq(constants.AddressZero)
     expect(await manager.allowFlareAssetPairsWithoutPlugin()).to.eq(false)
   })
 
@@ -99,18 +105,6 @@ describe('BlazeSwapManager', () => {
 
   it('setAirdropPlugin', async () => {
     await expect(manager.setAirdropPlugin(other.address)).to.be.revertedWith('BlazeSwap: ALREADY_SET')
-  })
-
-  it('setFlareAssetRegistry', async () => {
-    await expect(manager.connect(other).setFlareAssetRegistry(other.address)).to.be.revertedWith(
-      'Configurable: FORBIDDEN'
-    )
-    const registry1 = TEST_ADDRESS[0]
-    await manager.setFlareAssetRegistry(registry1)
-    expect(await manager.flareAssetRegistry()).to.eq(registry1)
-    const registry2 = TEST_ADDRESS[1]
-    await manager.setFlareAssetRegistry(registry2)
-    expect(await manager.flareAssetRegistry()).to.eq(registry2)
   })
 
   it('setAllowFlareAssetPairsWithoutPlugin', async () => {
@@ -144,7 +138,7 @@ describe('BlazeSwapManager', () => {
     await manager.setAllowFlareAssetPairsWithoutPlugin(true)
     expect(await manager.flareAssetSupport()).to.eq(0) // None
     await manager.setAllowFlareAssetPairsWithoutPlugin(false)
-    await manager.setFlareAssetRegistry(other.address)
+    await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
     expect(await manager.flareAssetSupport()).to.eq(0) // None
     await manager.setAllowFlareAssetPairsWithoutPlugin(true)
     expect(await manager.flareAssetSupport()).to.eq(1) // Minimal
@@ -161,11 +155,10 @@ describe('BlazeSwapManager', () => {
     expect(await manager.getTokenType(wNat.address)).to.eq(1) // WNat
     const flareAsset = await deployContract(wallet, FlareAssetTest, [1])
 
-    const registry = await deployContract(wallet, FlareAssetRegistry)
-    await manager.setFlareAssetRegistry(registry.address)
+    await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
 
     expect(await manager.getTokenType(flareAsset.address)).to.eq(0) // Not registered in Flare Asset Registry
-    await registry.addFlareAsset(flareAsset.address, 0)
+    await flareAssetRegistry.addFlareAsset(flareAsset.address, 0)
     expect(await manager.getTokenType(flareAsset.address)).to.eq(2) // FlareAsset
   })
 })

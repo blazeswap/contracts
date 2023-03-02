@@ -81,7 +81,7 @@ export async function flareFixture([wallet]: Wallet[], provider: providers.Web3P
   await registry.setContractAddress('WNat', wNat.address, updatableContracts)
   await registry.setContractAddress('FtsoManager', ftsoManager.address, updatableContracts)
   await registry.setContractAddress('FtsoRewardManager', ftsoRewardManager.address, updatableContracts)
-  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, updatableContracts)
+  // DistributionToDelegators and FlareAssetRegistry are not added to FlareContractRegistry initially
 
   await ftsoManager.initialize()
   await ftsoRewardManager.initialize()
@@ -269,7 +269,7 @@ export async function pairFlareAssetFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await manager.setFlareAssetRegistry(flareAssetRegistry.address)
+  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
   await manager.setAllowFlareAssetPairsWithoutPlugin(true)
 
   // provide FtsoRewardManager supply
@@ -309,7 +309,7 @@ export async function pairWNatFlareAssetFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await manager.setFlareAssetRegistry(flareAssetRegistry.address)
+  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
   await manager.setAllowFlareAssetPairsWithoutPlugin(true)
 
   // provide FtsoRewardManager supply
@@ -351,7 +351,7 @@ export async function pairFlareAssetsFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await manager.setFlareAssetRegistry(flareAssetRegistry.address)
+  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
   await manager.setAllowFlareAssetPairsWithoutPlugin(true)
 
   // provide FtsoRewardManager supply

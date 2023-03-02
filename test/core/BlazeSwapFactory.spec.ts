@@ -6,10 +6,11 @@ import { getCreate2Address } from './shared/utilities'
 import { factoryFixture } from './shared/fixtures'
 
 import BlazeSwapPair from '../../artifacts/contracts/core/BlazeSwapPair.sol/BlazeSwapPair.json'
-import FlareAssetRegistry from '../../artifacts/contracts/core/test/FlareAssetRegistry.sol/FlareAssetRegistry.json'
 import FlareAssetTest from '../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
 import BlazeSwapFlareAssetRewardPlugin from '../../artifacts/contracts/core/BlazeSwapFlareAssetRewardPlugin.sol/BlazeSwapFlareAssetRewardPlugin.json'
 import {
+  FlareAssetRegistry,
+  FlareContractRegistry,
   IBlazeSwapFactory,
   IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapManager,
@@ -23,11 +24,15 @@ describe('BlazeSwapFactory', () => {
   const [wallet, other] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet, other], provider)
 
+  let registry: FlareContractRegistry
+  let flareAssetRegistry: FlareAssetRegistry
   let manager: IBlazeSwapManager
   let factory: IBlazeSwapFactory
   let TEST_ADDRESSES: [string, string]
   beforeEach(async () => {
     const fixture = await loadFixture(factoryFixture)
+    registry = fixture.registry
+    flareAssetRegistry = fixture.flareAssetRegistry
     manager = fixture.manager
     factory = fixture.factory
     TEST_ADDRESSES = ['0x1000000000000000000000000000000000000000', await manager.wNat()]
@@ -73,21 +78,20 @@ describe('BlazeSwapFactory', () => {
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(4322513)
+    expect(receipt.gasUsed).to.eq(4326889)
   })
 
   it('createPairWithWNat:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(5599846)
+    expect(receipt.gasUsed).to.eq(5598746)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {
     const flareAsset = await deployContract(wallet, FlareAssetTest, [0])
     const tokens = ['0x1000000000000000000000000000000000000000', flareAsset.address]
-    const registry = await deployContract(wallet, FlareAssetRegistry)
-    await manager.setFlareAssetRegistry(registry.address)
-    await registry.addFlareAsset(tokens[1], 2)
+    await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
+    await flareAssetRegistry.addFlareAsset(tokens[1], 2)
     await expect(factory.createPair(tokens[0], tokens[1])).to.be.revertedWith('BlazeSwap: FASSET_UNSUPPORTED')
     await manager.setAllowFlareAssetPairsWithoutPlugin(true)
     await expect(factory.createPair(tokens[0], tokens[1])).not.to.be.reverted
@@ -116,9 +120,8 @@ describe('BlazeSwapFactory', () => {
   it('createPairWithFlareAsset:full', async () => {
     const flareAsset = await deployContract(wallet, FlareAssetTest, [0])
     const tokens = ['0x1000000000000000000000000000000000000000', flareAsset.address]
-    const registry = await deployContract(wallet, FlareAssetRegistry)
-    await manager.setFlareAssetRegistry(registry.address)
-    await registry.addFlareAsset(tokens[1], 2)
+    await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
+    await flareAssetRegistry.addFlareAsset(tokens[1], 2)
 
     const bytecode = BlazeSwapPair.bytecode
     const create2Address = getCreate2Address(factory.address, tokens as [string, string], bytecode)

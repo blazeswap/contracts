@@ -39,9 +39,7 @@ library FlareLibrary {
     }
 
     function getFlareAssetRegistry() internal view returns (IFlareAssetRegistry) {
-        address a = registry.getContractAddressByHash(FlareAssetRegistryHash);
-        checkNotZero(a);
-        return IFlareAssetRegistry(a);
+        return IFlareAssetRegistry(registry.getContractAddressByHash(FlareAssetRegistryHash));
     }
 
     function getFtsoManager() internal view returns (IFtsoManager) {

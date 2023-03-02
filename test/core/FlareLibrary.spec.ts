@@ -9,6 +9,7 @@ import FtsoManagerABI from '../../artifacts/contracts/core/test/FtsoManager.sol/
 import FtsoRewardManagerABI from '../../artifacts/contracts/core/test/FtsoRewardManager.sol/FtsoRewardManager.json'
 import {
   DistributionToDelegators,
+  FlareAssetRegistry,
   FlareContractRegistry,
   FlareLibraryTest,
   FtsoManager,
@@ -25,11 +26,13 @@ describe('FlareLibrary', () => {
   const loadFixture = createFixtureLoader([wallet, other], provider)
 
   let registry: FlareContractRegistry
+  let flareAssetRegistry: FlareAssetRegistry
   let distribution: DistributionToDelegators
   let flareLibrary: FlareLibraryTest
   beforeEach(async () => {
     const fixture = await loadFixture(flareFixture)
     registry = fixture.registry
+    flareAssetRegistry = fixture.flareAssetRegistry
     distribution = fixture.distribution
     flareLibrary = (await deployContract(wallet, FlareLibraryTestABI)) as FlareLibraryTest
   })
@@ -38,8 +41,10 @@ describe('FlareLibrary', () => {
     expect(await flareLibrary.getFtsoManager()).not.to.eq(constants.AddressZero)
     expect(await flareLibrary.getFtsoRewardManager()).not.to.eq(constants.AddressZero)
     expect(await flareLibrary.getWNat()).not.to.eq(constants.AddressZero)
+    // these are zero initially
+    expect(await flareLibrary.getFlareAssetRegistry()).to.eq(constants.AddressZero)
+    await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
     expect(await flareLibrary.getFlareAssetRegistry()).not.to.eq(constants.AddressZero)
-    // this is zero initially
     expect(await flareLibrary.getDistribution()).to.eq(constants.AddressZero)
     await registry.setContractAddress('DistributionToDelegators', distribution.address, [])
     expect(await flareLibrary.getDistribution()).not.to.eq(constants.AddressZero)

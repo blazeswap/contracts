@@ -39,10 +39,6 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function flareAssetRewardPlugin() external view returns (address);
 
-    function setFlareAssetRegistry(address _flareAssetRegistry) external;
-
-    function flareAssetRegistry() external view returns (address registry);
-
     function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external;
 
     function allowFlareAssetPairsWithoutPlugin() external view returns (bool);
