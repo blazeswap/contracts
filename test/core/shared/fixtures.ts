@@ -82,6 +82,9 @@ export async function flareFixture([wallet]: Wallet[], provider: providers.Web3P
   await registry.setContractAddress('FtsoManager', ftsoManager.address, updatableContracts)
   await registry.setContractAddress('FtsoRewardManager', ftsoRewardManager.address, updatableContracts)
   // DistributionToDelegators and FlareAssetRegistry are not added to FlareContractRegistry initially
+  // this is needed to cleanup contract storage due to fixed/static address
+  await registry.setContractAddress('DistributionToDelegators', constants.AddressZero, [])
+  await registry.setContractAddress('FlareAssetRegistry', constants.AddressZero, [])
 
   await ftsoManager.initialize()
   await ftsoRewardManager.initialize()
@@ -136,10 +139,6 @@ interface BaseFactoryFixture extends BaseManagerFixture {
 
 interface FactoryFixture extends ManagerFixture {
   factory: IBlazeSwapFactory
-  wNat: IWNat
-  ftsoManager: FtsoManager
-  ftsoRewardManager: FtsoRewardManager
-  distribution: DistributionToDelegators
 }
 
 export async function baseFactoryFixture(
