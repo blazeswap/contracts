@@ -78,13 +78,13 @@ describe('BlazeSwapFactory', () => {
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(4326889)
+    expect(receipt.gasUsed).to.eq(4326933)
   })
 
   it('createPairWithWNat:gas', async () => {
     const tx = await factory.createPair(...TEST_ADDRESSES)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(5598746)
+    expect(receipt.gasUsed).to.eq(5598694)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {
@@ -104,7 +104,7 @@ describe('BlazeSwapFactory', () => {
       5,
       'FlareAsset Reward Plugin',
     ])
-    await manager.setFlareAssetsRewardPlugin(flareAssetReward.address)
+    await manager.setFlareAssetRewardPlugin(flareAssetReward.address)
 
     await expect(factory.upgradeFlareAssetPair(create2Address)).not.to.be.reverted
 
@@ -130,7 +130,7 @@ describe('BlazeSwapFactory', () => {
       5,
       'FlareAsset Reward Plugin',
     ])
-    await manager.setFlareAssetsRewardPlugin(flareAssetReward.address)
+    await manager.setFlareAssetRewardPlugin(flareAssetReward.address)
 
     await expect(factory.createPair(tokens[0], tokens[1])).not.to.be.reverted
 

@@ -51,7 +51,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function setAirdropPlugin(address _airdropPlugin) external;
 
-    function setFlareAssetsRewardPlugin(address _flareAssetRewardPlugin) external;
+    function setFlareAssetRewardPlugin(address _flareAssetRewardPlugin) external;
 
     function flareAssetSupport() external view returns (FlareAssetSupport);
 }

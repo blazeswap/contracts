@@ -102,7 +102,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         allowFlareAssetPairsWithoutPlugin = _allowFlareAssetPairsWithoutPlugin;
     }
 
-    function setFlareAssetsRewardPlugin(address _flareAssetRewardPlugin) external onlyConfigSetter {
+    function setFlareAssetRewardPlugin(address _flareAssetRewardPlugin) external onlyConfigSetter {
         if (flareAssetRewardPlugin != address(0)) revertAlreadySet();
         address impl = IBlazeSwapPlugin(_flareAssetRewardPlugin).implementation();
         require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');

@@ -117,18 +117,18 @@ describe('BlazeSwapManager', () => {
     expect(await manager.allowFlareAssetPairsWithoutPlugin()).to.eq(false)
   })
 
-  it('setFlareAssetsRewardPlugin', async () => {
+  it('setFlareAssetRewardPlugin', async () => {
     const flareAssetReward = await deployContract(wallet, BlazeSwapFlareAssetRewardPlugin, [
       5,
       'FlareAsset Reward Plugin',
     ])
 
-    await expect(manager.connect(other).setFlareAssetsRewardPlugin(flareAssetReward.address)).to.be.revertedWith(
+    await expect(manager.connect(other).setFlareAssetRewardPlugin(flareAssetReward.address)).to.be.revertedWith(
       'Configurable: FORBIDDEN'
     )
-    await manager.setFlareAssetsRewardPlugin(flareAssetReward.address)
+    await manager.setFlareAssetRewardPlugin(flareAssetReward.address)
     expect(await manager.flareAssetRewardPlugin()).to.eq(flareAssetReward.address)
-    await expect(manager.setFlareAssetsRewardPlugin(flareAssetReward.address)).to.be.revertedWith(
+    await expect(manager.setFlareAssetRewardPlugin(flareAssetReward.address)).to.be.revertedWith(
       'BlazeSwap: ALREADY_SET'
     )
   })
@@ -146,7 +146,7 @@ describe('BlazeSwapManager', () => {
       5,
       'FlareAsset Reward Plugin',
     ])
-    await manager.setFlareAssetsRewardPlugin(flareAssetReward.address)
+    await manager.setFlareAssetRewardPlugin(flareAssetReward.address)
     expect(await manager.flareAssetSupport()).to.eq(2) // Full
   })
 
