@@ -3,7 +3,7 @@ pragma solidity >=0.7.5;
 pragma abicoder v2;
 
 interface IDistributionToDelegators {
-    function votePowerBlockNumbers(uint256 _month) external view returns (uint256[] memory);
+    function votePowerBlockNumbers(uint256 _month, uint256 _index) external view returns (uint256);
 
     function stopped() external view returns (bool);
 

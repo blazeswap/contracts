@@ -92,7 +92,7 @@ describe('BlazeSwapAirdrop', () => {
 
   it('no switch to DistributionToDelegators', async () => {
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
-    await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+    await distribution.setSingleVotePowerBlockNumber(0, [(await provider.getBlock('latest')).number])
     await distribution.addAirdrop(pair.address, 0, 100)
 
     let [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(constants.AddressZero)
@@ -121,7 +121,7 @@ describe('BlazeSwapAirdrop', () => {
       const b2 = (await provider.getBlock('latest')).number
       await distribution.setVotePowerBlockNumbers(0, [b0, b1, b2])
       await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
-      await distribution.setVotePowerBlockNumbers(1, [b2])
+      await distribution.setSingleVotePowerBlockNumber(1, b2)
       await distribution.addAirdrop(pair.address, 1, 120, { value: 120 })
 
       let [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(other.address)
@@ -156,7 +156,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
       const b0 = (await provider.getBlock('latest')).number
-      await distribution.setVotePowerBlockNumbers(0, [b0])
+      await distribution.setSingleVotePowerBlockNumber(0, b0)
       await distribution.addAirdrop(pair.address, 0, 20, { value: 20 })
       const newDistribution = (await deployContract(wallet, DistributionToDelegatorsABI)) as DistributionToDelegators
       await distribution.stop()
@@ -167,7 +167,7 @@ describe('BlazeSwapAirdrop', () => {
       expect(totalAmounts).to.deep.eq([])
 
       await registry.setContractAddress('DistributionToDelegators', newDistribution.address, [])
-      await newDistribution.setVotePowerBlockNumbers(0, [b0])
+      await newDistribution.setSingleVotePowerBlockNumber(0, b0)
       await newDistribution.addAirdrop(pair.address, 0, 100, { value: 100 })
       ;[months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(other.address)
       expect(months).to.deep.eq([BigNumber.from('0')])
@@ -178,11 +178,11 @@ describe('BlazeSwapAirdrop', () => {
     it('airdrop lasts 36 months', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
-      await distribution.setVotePowerBlockNumbers(35, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(35, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 35, 100, { value: 100 })
-      await distribution.setVotePowerBlockNumbers(36, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(36, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 36, 100, { value: 100 })
 
       const [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(constants.AddressZero)
@@ -195,7 +195,7 @@ describe('BlazeSwapAirdrop', () => {
       const b0 = (await provider.getBlock('latest')).number
 
       const airdropAmount = BigNumber.from('50')
-      await distribution.setVotePowerBlockNumbers(1, [b0])
+      await distribution.setSingleVotePowerBlockNumber(1, b0)
       await distribution.addAirdrop(pair.address, 1, airdropAmount, { value: airdropAmount })
 
       const rewardManagerAddress = getRewardManagerAddress(pair.address)
@@ -213,13 +213,13 @@ describe('BlazeSwapAirdrop', () => {
       const b0 = (await provider.getBlock('latest')).number
 
       const airdropAmount1 = BigNumber.from('50')
-      await distribution.setVotePowerBlockNumbers(1, [b0])
+      await distribution.setSingleVotePowerBlockNumber(1, b0)
       await distribution.addAirdrop(pair.address, 1, airdropAmount1, { value: airdropAmount1 })
 
       const b1 = (await provider.getBlock('latest')).number
 
       const airdropAmount2 = BigNumber.from('100')
-      await distribution.setVotePowerBlockNumbers(2, [b1])
+      await distribution.setSingleVotePowerBlockNumber(2, b1)
       await distribution.addAirdrop(pair.address, 2, airdropAmount2, { value: airdropAmount2 })
 
       const rewardManagerAddress = getRewardManagerAddress(pair.address)
@@ -241,10 +241,10 @@ describe('BlazeSwapAirdrop', () => {
     it('monthsWithUnclaimedAirdrop', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(4))
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 240, { value: 240 })
 
       await airdrop.distributeAirdrop(0)
@@ -277,7 +277,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -295,7 +295,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -314,7 +314,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -332,7 +332,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -351,12 +351,12 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(other, expandTo18Decimals(3), expandTo18Decimals(3))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await removeLiquidity(wallet, expandTo18Decimals(1).sub(MINIMUM_LIQUIDITY))
 
-      await distribution.setVotePowerBlockNumbers(2, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(2, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 2, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -384,7 +384,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -406,7 +406,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -430,7 +430,7 @@ describe('BlazeSwapAirdrop', () => {
       await addLiquidity(other, expandTo18Decimals(1), expandTo18Decimals(1))
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
 
       await airdrop.distributeAirdrop(1)
@@ -450,11 +450,11 @@ describe('BlazeSwapAirdrop', () => {
     it('claimAirdrops:expired', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(4))
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
       await airdrop.distributeAirdrop(0)
 
-      await distribution.setVotePowerBlockNumbers(1, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(1, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 1, 100, { value: 100 })
       await airdrop.distributeAirdrop(1)
 
@@ -474,7 +474,7 @@ describe('BlazeSwapAirdrop', () => {
 
       const totalAirdrop = BigNumber.from('1000')
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, totalAirdrop, { value: totalAirdrop })
 
       const expectedDistributedAirdrop = applyFee(totalAirdrop)
@@ -494,7 +494,7 @@ describe('BlazeSwapAirdrop', () => {
 
       const totalAirdrop = BigNumber.from('1000')
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, totalAirdrop, { value: totalAirdrop })
 
       const expectedDistributedAirdrop = applyFee(totalAirdrop)
@@ -514,7 +514,7 @@ describe('BlazeSwapAirdrop', () => {
 
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, 1000, { value: 1000 })
 
       await airdrop.distributeAirdrop(0)
@@ -543,7 +543,7 @@ describe('BlazeSwapAirdrop', () => {
     it('multicall:distributeAndClaim', async () => {
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
 
-      await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+      await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
       await distribution.addAirdrop(pair.address, 0, 100, { value: 100 })
 
       const [months, amounts, totalAmounts] = await airdrop.monthsWithUndistributedAirdrop(wallet.address)

@@ -19,7 +19,7 @@ contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpd
         bool claimed;
     }
     mapping(address => Airdrop[]) private airdrops;
-    mapping(uint256 => uint256[]) public votePowerBlocks;
+    mapping(uint256 => uint256[]) public votePowerBlockNumbers;
     bool public stopped;
 
     receive() external payable {}
@@ -35,17 +35,21 @@ contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpd
         stopped = true;
     }
 
+    function setSingleVotePowerBlockNumber(uint256 _month, uint256 _block) external {
+        votePowerBlockNumbers[_month].push(_block);
+        votePowerBlockNumbers[_month].push(_block);
+        votePowerBlockNumbers[_month].push(_block);
+        getCurrentMonth = _month + 1;
+    }
+
     function setVotePowerBlockNumbers(uint256 _month, uint256[] calldata _blocks) external {
-        votePowerBlocks[_month] = _blocks;
+        require(_blocks.length == 3, 'Needs 3 snapshots');
+        votePowerBlockNumbers[_month] = _blocks;
         getCurrentMonth = _month + 1;
     }
 
     function addAirdrop(address _beneficiary, uint256 _month, uint256 _amount) external payable {
         airdrops[_beneficiary].push(Airdrop(_month, _amount, false));
-    }
-
-    function votePowerBlockNumbers(uint256 _month) external view returns (uint256[] memory) {
-        return votePowerBlocks[_month];
     }
 
     function setMonthToExpireNext(uint256 _month) external {

@@ -76,7 +76,7 @@ describe('BlazeSwapRewardManager', () => {
   })
 
   it('claimAirdrop', async () => {
-    await distribution.setVotePowerBlockNumbers(0, [(await provider.getBlock('latest')).number])
+    await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
     await distribution.addAirdrop(rewardManager.address, 0, 100, { value: 100 })
 
     await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, BigNumber.from('0'))

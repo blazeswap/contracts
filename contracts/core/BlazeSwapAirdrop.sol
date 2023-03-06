@@ -45,6 +45,8 @@ library BlazeSwapAirdropStorage {
 contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
     using FlareLibrary for IDistributionToDelegators;
 
+    uint256 private constant NUMBER_OF_VOTE_POWER_BLOCKS = 3;
+
     function initialize(address) external onlyDelegatedCall {
         BlazeSwapAirdropStorage.Layout storage l = BlazeSwapAirdropStorage.layout();
         l.executorManager = IBlazeSwapExecutorManager(BlazeSwapPairStorage.layout().manager.executorManager());
@@ -66,13 +68,13 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         address beneficiary
     ) private view returns (uint256 amount) {
         IWNat wNat = FlareLibrary.getWNat();
-        uint256[] memory votePowerBlocks = distribution.votePowerBlockNumbers(month);
         uint256 votePower;
         uint256 beneficiaryVotePower;
-        for (uint256 i; i < votePowerBlocks.length; i++) {
-            uint256 wNatBalance = wNat.balanceOfAt(address(this), votePowerBlocks[i]);
-            uint256 poolBalance = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[i]);
-            uint256 beneficiaryBalance = IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlocks[i]);
+        for (uint256 i; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
+            uint256 votePowerBlock = distribution.votePowerBlockNumbers(month, i);
+            uint256 wNatBalance = wNat.balanceOfAt(address(this), votePowerBlock);
+            uint256 poolBalance = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
+            uint256 beneficiaryBalance = IBlazeSwapPair(address(this)).balanceOfAt(beneficiary, votePowerBlock);
             if (poolBalance > 0) {
                 beneficiaryVotePower += (beneficiaryBalance * wNatBalance) / poolBalance; // this cannot overflow
                 votePower += wNatBalance;
@@ -148,15 +150,16 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
                 uint256 monthAmount = distribution.claim(rewardManagerAddress, month);
                 if (monthAmount > 0) {
                     totalAmount += monthAmount;
-                    uint256[] memory votePowerBlocks = distribution.votePowerBlockNumbers(month);
-                    uint256 blocksLen = votePowerBlocks.length;
-                    uint256[] memory wNatBalances = new uint256[](blocksLen);
-                    uint256[] memory poolBalances = new uint256[](blocksLen);
+                    uint256[] memory votePowerBlocks = new uint256[](NUMBER_OF_VOTE_POWER_BLOCKS);
+                    uint256[] memory wNatBalances = new uint256[](NUMBER_OF_VOTE_POWER_BLOCKS);
+                    uint256[] memory poolBalances = new uint256[](NUMBER_OF_VOTE_POWER_BLOCKS);
                     uint256 votePower;
-                    for (uint256 j; j < blocksLen; j++) {
-                        wNatBalances[j] = wNat.balanceOfAt(address(this), votePowerBlocks[j]);
-                        poolBalances[j] = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlocks[j]);
-                        votePower += wNatBalances[j];
+                    for (uint256 i; i < NUMBER_OF_VOTE_POWER_BLOCKS; i++) {
+                        uint256 votePowerBlock = distribution.votePowerBlockNumbers(month, i);
+                        votePowerBlocks[i] = votePowerBlock;
+                        wNatBalances[i] = wNat.balanceOfAt(address(this), votePowerBlock);
+                        poolBalances[i] = IBlazeSwapPair(address(this)).totalSupplyAt(votePowerBlock);
+                        votePower += wNatBalances[i];
                     }
                     uint256 airdropAmount = applyFee(monthAmount, airdropFeeBips);
                     if (airdropAmount > 0) {

@@ -199,13 +199,13 @@ describe('FlareLibrary', () => {
     expect(end).to.eq(0)
     expect(len).to.eq(0)
 
-    await distribution.setVotePowerBlockNumbers(0, [1])
+    await distribution.setSingleVotePowerBlockNumber(0, 1)
     ;[start, end, len] = await flareLibrary.getActiveAirdropMonthsExclusive(0, false)
     expect(start).to.eq(0)
     expect(end).to.eq(1)
     expect(len).to.eq(1)
 
-    await distribution.setVotePowerBlockNumbers(5, [1])
+    await distribution.setSingleVotePowerBlockNumber(5, 1)
     ;[start, end, len] = await flareLibrary.getActiveAirdropMonthsExclusive(0, false)
     expect(start).to.eq(0)
     expect(end).to.eq(6)
