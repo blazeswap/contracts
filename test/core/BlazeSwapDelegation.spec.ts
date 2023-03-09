@@ -7,11 +7,13 @@ import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from '
 
 import BlazeSwapPair from '../../artifacts/contracts/core/BlazeSwapPair.sol/BlazeSwapPair.json'
 import BlazeSwapDelegation from '../../artifacts/contracts/core/BlazeSwapDelegation.sol/BlazeSwapDelegation.json'
+import WNAT from '../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
 
 import { Coder } from 'abi-coder'
 
 import {
   BlazeSwapDelegationPlugin__factory,
+  FlareContractRegistry,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
   IBlazeSwapManager,
@@ -23,13 +25,14 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
+const { createFixtureLoader, deployContract } = waffle
 
 describe('BlazeSwapDelegation', () => {
   const provider = waffle.provider
   const [wallet, other1, other2] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
 
+  let registry: FlareContractRegistry
   let manager: IBlazeSwapManager
   let wNat: IWNat
   let token0: IERC20
@@ -39,6 +42,7 @@ describe('BlazeSwapDelegation', () => {
   let rewardManagerAddress: string
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
+    registry = fixture.registry
     manager = fixture.manager
     wNat = fixture.wNat
     token0 = fixture.token0
@@ -484,6 +488,38 @@ describe('BlazeSwapDelegation', () => {
     await expect(() => idelegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other1, rewardAmount)
 
     await wNat.transfer(rewardManagerAddress, rewardAmount)
+
+    expect(await idelegation.callStatic.withdrawRewardFees(false)).to.be.eq(rewardAmount)
+    await expect(() => idelegation.withdrawRewardFees(false)).to.changeEtherBalance(other1, rewardAmount)
+  })
+
+  it('withdrawRewardFees:newWNat-wrapped', async () => {
+    const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, other1)
+
+    const rewardAmount = expandTo18Decimals(2)
+
+    await wNat.transfer(rewardManagerAddress, rewardAmount)
+
+    await manager.setRewardsFeeTo(other1.address)
+
+    const newWNat = await deployContract(wallet, WNAT)
+    await registry.setContractAddress('WNat', newWNat.address, [])
+
+    expect(await idelegation.callStatic.withdrawRewardFees(true)).to.be.eq(rewardAmount)
+    await expect(() => idelegation.withdrawRewardFees(true)).to.changeTokenBalance(newWNat, other1, rewardAmount)
+  })
+
+  it('withdrawRewardFees:newWNat-native', async () => {
+    const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, other1)
+
+    const rewardAmount = expandTo18Decimals(2)
+
+    await wNat.transfer(rewardManagerAddress, rewardAmount)
+
+    await manager.setRewardsFeeTo(other1.address)
+
+    const newWNat = await deployContract(wallet, WNAT)
+    await registry.setContractAddress('WNat', newWNat.address, [])
 
     expect(await idelegation.callStatic.withdrawRewardFees(false)).to.be.eq(rewardAmount)
     await expect(() => idelegation.withdrawRewardFees(false)).to.changeEtherBalance(other1, rewardAmount)

@@ -29,3 +29,9 @@ module.exports.deployContract = async function (name, params, periphery = false)
 
   return contract
 }
+
+module.exports.getFlareContractAddress = async function (name) {
+  const registry = await ethers.getContractAt('FlareContractRegistry', '0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019')
+  const address = await registry.getContractAddressByName(name)
+  return address
+}

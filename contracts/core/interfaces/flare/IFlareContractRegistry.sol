@@ -4,4 +4,6 @@ pragma abicoder v2;
 
 interface IFlareContractRegistry {
     function getContractAddressByHash(bytes32 _nameHash) external view returns (address);
+
+    function getContractAddressByName(string calldata _name) external view returns (address);
 }

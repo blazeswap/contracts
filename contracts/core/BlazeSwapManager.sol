@@ -17,7 +17,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     uint256 public flareAssetRewardsFeeBips;
     uint256 public airdropFeeBips;
 
-    address public immutable wNat;
     address public immutable executorManager;
 
     bool public allowFlareAssetPairsWithoutPlugin;
@@ -31,7 +30,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
-        wNat = address(FlareLibrary.getWNat());
     }
 
     function setRewardsFeeTo(address _rewardsFeeTo) external onlyConfigSetter {
@@ -89,7 +87,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     }
 
     function isWNat(address token) private view returns (bool) {
-        return token == wNat;
+        return token == address(FlareLibrary.getWNat());
     }
 
     function getTokenType(address token) external view returns (TokenType tokenType) {

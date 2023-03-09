@@ -6,13 +6,7 @@ import { managerFixture } from './shared/fixtures'
 
 import BlazeSwapFlareAssetRewardPlugin from '../../artifacts/contracts/core/BlazeSwapFlareAssetRewardPlugin.sol/BlazeSwapFlareAssetRewardPlugin.json'
 import FlareAssetTest from '../../artifacts/contracts/core/test/FlareAssetTest.sol/FlareAssetTest.json'
-import {
-  FlareAssetRegistry,
-  FlareContractRegistry,
-  IBlazeSwapManager,
-  IWNat,
-  IWNat__factory,
-} from '../../typechain-types'
+import { FlareAssetRegistry, FlareContractRegistry, IBlazeSwapManager } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
 
@@ -24,13 +18,11 @@ describe('BlazeSwapManager', () => {
   let manager: IBlazeSwapManager
   let registry: FlareContractRegistry
   let flareAssetRegistry: FlareAssetRegistry
-  let wNat: IWNat
   beforeEach(async () => {
     const fixture = await loadFixture(managerFixture)
     manager = fixture.manager
     registry = fixture.registry
     flareAssetRegistry = fixture.flareAssetRegistry
-    wNat = IWNat__factory.connect(await registry.getContractAddressByName('WNat'), wallet)
   })
 
   it('rewardsFeeTo, ftsoRewardsFeeBips', async () => {
@@ -73,9 +65,8 @@ describe('BlazeSwapManager', () => {
     expect(await manager.airdropFeeBips()).to.eq(0)
   })
 
-  it('executorManager, wNat, rewardManager, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, allowFlareAssetPairsWithoutPlugin', async () => {
+  it('executorManager, rewardManager, delegationPlugin, ftsoRewardPlugin, flareAssetRewardPlugin, airdropPlugin, allowFlareAssetPairsWithoutPlugin', async () => {
     expect(await manager.executorManager()).not.to.eq(constants.AddressZero)
-    expect(await manager.wNat()).not.to.eq(constants.AddressZero)
     expect(await manager.rewardManager()).not.to.eq(constants.AddressZero)
     expect(await manager.delegationPlugin()).not.to.eq(constants.AddressZero)
     expect(await manager.ftsoRewardPlugin()).not.to.eq(constants.AddressZero)
@@ -152,7 +143,7 @@ describe('BlazeSwapManager', () => {
 
   it('getTokenType', async () => {
     expect(await manager.getTokenType(other.address)).to.eq(0) // Generic
-    expect(await manager.getTokenType(wNat.address)).to.eq(1) // WNat
+    expect(await manager.getTokenType(await registry.getContractAddressByName('WNat'))).to.eq(1) // WNat
     const flareAsset = await deployContract(wallet, FlareAssetTest, [1])
 
     await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])

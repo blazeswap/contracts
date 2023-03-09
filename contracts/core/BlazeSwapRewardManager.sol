@@ -33,6 +33,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
 
     function changeProviders(address[] calldata providers) external onlyDelegatedCall onlyParent {
         wNat.changeProviders(providers, type(uint256).max);
+        rewrapRewardsIfNeeded();
     }
 
     function claimFtsoRewards(uint256[] calldata epochs) external onlyDelegatedCall returns (uint256 amount) {
@@ -68,6 +69,20 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         wrapRewards();
     }
 
+    function rewrapRewardsIfNeeded() public onlyDelegatedCall returns (bool) {
+        IWNat latest = FlareLibrary.getWNat();
+        if (latest != wNat) {
+            wNat.withdraw(wNat.balanceOf(address(this)));
+            latest.deposit{value: address(this).balance}();
+            (address[] memory providers, , , ) = wNat.delegatesOf(address(this));
+            latest.changeProviders(providers, type(uint256).max);
+            wNat = latest;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     function claimAirdrop(uint256 month) external onlyDelegatedCall returns (uint256 amount) {
         IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
@@ -76,12 +91,19 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         wrapRewards();
     }
 
+    function rewardsBalance() external view onlyDelegatedCall returns (uint256 amount) {
+        amount = wNat.balanceOf(address(this));
+    }
+
     function wrapRewards() public onlyDelegatedCall {
-        if (address(this).balance > 0) wNat.depositTo{value: address(this).balance}(address(this));
+        if (!rewrapRewardsIfNeeded()) {
+            if (address(this).balance > 0) wNat.deposit{value: address(this).balance}();
+        }
     }
 
     // re-entrancy check in parent
     function sendRewards(address to, uint256 amount, bool unwrap) external onlyDelegatedCall onlyParent {
+        rewrapRewardsIfNeeded();
         if (unwrap) {
             wNat.withdraw(amount);
             TransferHelper.safeTransferNAT(to, amount);

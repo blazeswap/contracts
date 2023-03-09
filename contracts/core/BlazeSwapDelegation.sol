@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import '../shared/libraries/CloneHelper.sol';
 import '../shared/libraries/DelegateCallHelper.sol';
 import '../shared/Configurable.sol';
 import '../shared/DelegatedCalls.sol';
+import '../shared/MinimalPayableProxy.sol';
 import '../shared/ReentrancyLock.sol';
 import './interfaces/IBlazeSwapDelegation.sol';
 import './interfaces/IBlazeSwapDelegationPlugin.sol';
@@ -31,7 +31,6 @@ library BlazeSwapDelegationStorage {
 
     struct Layout {
         IBlazeSwapDelegationPlugin plugin;
-        IWNat wNat;
         IIBlazeSwapRewardManager rewardManager;
         mapping(address => address) providerDelegation; // delegator => provider
         mapping(address => uint256) providerVotes; // provider => votes
@@ -55,9 +54,8 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IBlazeSwapDelegationPlugin plugin = IBlazeSwapDelegationPlugin(_plugin);
         l.plugin = plugin;
-        l.wNat = FlareLibrary.getWNat();
         l.rewardManager = IIBlazeSwapRewardManager(
-            CloneHelper.clone(BlazeSwapPairStorage.layout().manager.rewardManager())
+            address(new MinimalPayableProxy(BlazeSwapPairStorage.layout().manager.rewardManager()))
         );
         l.rewardManager.initialize();
         address[] memory initialProviders = new address[](1);
@@ -215,7 +213,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         returns (address[] memory delegatedProviders, uint256[] memory bips)
     {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        (delegatedProviders, bips, , ) = l.wNat.delegatesOf(address(l.rewardManager));
+        (delegatedProviders, bips, , ) = FlareLibrary.getWNat().delegatesOf(address(l.rewardManager));
     }
 
     function providersAtEpoch(
@@ -226,7 +224,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         IFtsoManager ftsoManager = FlareLibrary.getFtsoManager();
         if (current) epoch = ftsoManager.getCurrentFtsoRewardEpoch();
         uint256 votePowerBlock = ftsoManager.getRewardEpochVotePowerBlock(epoch);
-        (delegatedProviders, bips, , ) = l.wNat.delegatesOfAt(address(l.rewardManager), votePowerBlock);
+        (delegatedProviders, bips, , ) = FlareLibrary.getWNat().delegatesOfAt(address(l.rewardManager), votePowerBlock);
     }
 
     function providersAtCurrentEpoch() external view onlyDelegatedCall returns (address[] memory, uint256[] memory) {
@@ -256,7 +254,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
             newTotal += votes;
             prevVotes = votes;
         }
-        (address[] memory _delegateAddresses, , , ) = l.wNat.delegatesOf(address(l.rewardManager));
+        (address[] memory _delegateAddresses, , , ) = FlareLibrary.getWNat().delegatesOf(address(l.rewardManager));
         uint256 oldTotal;
         for (uint256 i; i < _delegateAddresses.length; i++) {
             oldTotal += l.providerVotes[_delegateAddresses[i]];
@@ -316,8 +314,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
             );
             totalRewards += abi.decode(result, (uint256));
         }
-        // TODO
-        uint256 balance = l.wNat.balanceOf(address(rewardManager));
+        uint256 balance = rewardManager.rewardsBalance();
         rewardFees = balance - totalRewards;
         if (rewardFees > 0) {
             address feeTo = BlazeSwapPairStorage.layout().manager.rewardsFeeTo();

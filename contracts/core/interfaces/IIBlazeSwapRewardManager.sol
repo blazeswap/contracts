@@ -11,6 +11,10 @@ interface IIBlazeSwapRewardManager {
 
     function claimAirdrop(uint256 month) external returns (uint256 amount);
 
+    function rewardsBalance() external view returns (uint256 amount);
+
+    function rewrapRewardsIfNeeded() external returns (bool);
+
     function wrapRewards() external;
 
     function sendRewards(address to, uint256 amount, bool unwrap) external;

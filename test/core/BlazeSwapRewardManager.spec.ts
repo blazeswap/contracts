@@ -5,6 +5,8 @@ import { BigNumber } from 'ethers'
 import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress } from './shared/utilities'
 
+import WNAT from '../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
+
 import {
   BlazeSwapRewardManager,
   BlazeSwapRewardManager__factory,
@@ -15,7 +17,7 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
+const { createFixtureLoader, deployContract } = waffle
 
 describe('BlazeSwapRewardManager', () => {
   const provider = waffle.provider
@@ -89,5 +91,25 @@ describe('BlazeSwapRewardManager', () => {
     expect(await distribution.getClaimableAmountOf(rewardManager.address, 0)).to.eq(expectedAmount)
 
     await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, expectedAmount)
+  })
+
+  it('wrapRewards', async () => {
+    const natAmount = expandTo18Decimals(10)
+    await wallet.sendTransaction({ to: rewardManager.address, value: natAmount })
+
+    const newWNat = await deployContract(wallet, WNAT)
+    await registry.setContractAddress('WNat', newWNat.address, [])
+
+    await expect(() => rewardManager.wrapRewards()).to.changeTokenBalance(newWNat, rewardManager, natAmount)
+  })
+
+  it('rewrapRewardsIfNeeded', async () => {
+    const wNatAmount = expandTo18Decimals(10)
+    await wNat.transfer(rewardManager.address, wNatAmount)
+
+    const newWNat = await deployContract(wallet, WNAT)
+    await registry.setContractAddress('WNat', newWNat.address, [])
+
+    await expect(() => rewardManager.rewrapRewardsIfNeeded()).to.changeTokenBalance(newWNat, rewardManager, wNatAmount)
   })
 })

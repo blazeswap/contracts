@@ -23,8 +23,6 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function airdropFeeBips() external view returns (uint256);
 
-    function wNat() external view returns (address);
-
     function executorManager() external view returns (address);
 
     function getTokenType(address token) external view returns (TokenType tokenType);

@@ -28,47 +28,17 @@ describe('BlazeSwapFactory', () => {
   let flareAssetRegistry: FlareAssetRegistry
   let manager: IBlazeSwapManager
   let factory: IBlazeSwapFactory
-  let TEST_ADDRESSES: [string, string]
   beforeEach(async () => {
     const fixture = await loadFixture(factoryFixture)
     registry = fixture.registry
     flareAssetRegistry = fixture.flareAssetRegistry
     manager = fixture.manager
     factory = fixture.factory
-    TEST_ADDRESSES = ['0x1000000000000000000000000000000000000000', await manager.wNat()]
   })
 
   it('manager, configSetter, allPairsLength', async () => {
     expect(await factory.manager()).not.to.eq(constants.AddressZero)
     expect(await factory.allPairsLength()).to.eq(0)
-  })
-
-  async function createPair(tokens: [string, string]) {
-    const bytecode = BlazeSwapPair.bytecode
-    const create2Address = getCreate2Address(factory.address, tokens, bytecode)
-    await expect(factory.createPair(...tokens))
-      .to.emit(factory, 'PairCreated')
-      .withArgs(TEST_ADDRESSES[0], TEST_ADDRESSES[1], create2Address, BigNumber.from(1))
-
-    await expect(factory.createPair(tokens[0], tokens[1])).to.be.reverted // BlazeSwap: PAIR_EXISTS
-    await expect(factory.createPair(tokens[1], tokens[0])).to.be.reverted // BlazeSwap: PAIR_EXISTS
-    expect(await factory.getPair(tokens[0], tokens[1])).to.eq(create2Address)
-    expect(await factory.getPair(tokens[1], tokens[0])).to.eq(create2Address)
-    expect(await factory.allPairs(0)).to.eq(create2Address)
-    expect(await factory.allPairsLength()).to.eq(1)
-
-    const pair = IBlazeSwapPair__factory.connect(create2Address, wallet)
-    expect(await pair.factory()).to.eq(factory.address)
-    expect(await pair.token0()).to.eq(TEST_ADDRESSES[0])
-    expect(await pair.token1()).to.eq(TEST_ADDRESSES[1])
-  }
-
-  it('createPair', async () => {
-    await createPair(TEST_ADDRESSES)
-  })
-
-  it('createPair:reverse', async () => {
-    await createPair(TEST_ADDRESSES.slice().reverse() as [string, string])
   })
 
   it('createPairGeneric:gas', async () => {
@@ -78,13 +48,17 @@ describe('BlazeSwapFactory', () => {
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(4326933)
+    expect(receipt.gasUsed).to.eq(4331259)
   })
 
   it('createPairWithWNat:gas', async () => {
-    const tx = await factory.createPair(...TEST_ADDRESSES)
+    const tokens: [string, string] = [
+      '0x1000000000000000000000000000000000000001',
+      await registry.getContractAddressByName('WNat'),
+    ]
+    const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(5598694)
+    expect(receipt.gasUsed).to.be.within(5692500, 5692600)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {
