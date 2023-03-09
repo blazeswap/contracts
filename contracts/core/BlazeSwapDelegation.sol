@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import '../shared/libraries/AddressSet.sol';
 import '../shared/libraries/DelegateCallHelper.sol';
 import '../shared/Configurable.sol';
 import '../shared/DelegatedCalls.sol';
@@ -34,7 +35,7 @@ library BlazeSwapDelegationStorage {
         IIBlazeSwapRewardManager rewardManager;
         mapping(address => address) providerDelegation; // delegator => provider
         mapping(address => uint256) providerVotes; // provider => votes
-        address[] allProviders;
+        AddressSet.State allProviders;
         BlockAndOrigin lastProvidersChange;
     }
 
@@ -47,6 +48,7 @@ library BlazeSwapDelegationStorage {
 }
 
 contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, DelegatedCalls, ReentrancyLock {
+    using AddressSet for AddressSet.State;
     using FlareLibrary for IFtsoManager;
     using Delegator for IVPToken;
 
@@ -72,22 +74,22 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
     }
 
     function providers(uint256 i) external view onlyDelegatedCall returns (address) {
-        return BlazeSwapDelegationStorage.layout().allProviders[i];
+        return BlazeSwapDelegationStorage.layout().allProviders.list[i];
     }
 
     function providersCount() external view onlyDelegatedCall returns (uint256) {
-        return BlazeSwapDelegationStorage.layout().allProviders.length;
+        return BlazeSwapDelegationStorage.layout().allProviders.list.length;
     }
 
     function providersAll() external view onlyDelegatedCall returns (address[] memory) {
-        return BlazeSwapDelegationStorage.layout().allProviders;
+        return BlazeSwapDelegationStorage.layout().allProviders.list;
     }
 
     function providersSubset(
         uint256 offset,
         uint256 count
     ) external view onlyDelegatedCall returns (address[] memory providersPage) {
-        address[] storage allProviders = BlazeSwapDelegationStorage.layout().allProviders;
+        address[] storage allProviders = BlazeSwapDelegationStorage.layout().allProviders.list;
         uint256 totalLen = allProviders.length;
         uint256 len;
         if (offset < totalLen) {
@@ -105,7 +107,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
 
     function providersWithVotes() external view onlyDelegatedCall returns (address[] memory, uint256[] memory) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        address[] memory allProviders = l.allProviders;
+        address[] memory allProviders = l.allProviders.list;
         uint256[] memory allVotes = new uint256[](allProviders.length);
         for (uint256 i; i < allProviders.length; i++) {
             allVotes[i] = l.providerVotes[allProviders[i]];
@@ -118,7 +120,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         uint256 count
     ) external view onlyDelegatedCall returns (address[] memory providersPage, uint256[] memory votesPage) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        address[] storage allProviders = l.allProviders;
+        address[] storage allProviders = l.allProviders.list;
         uint256 totalLen = allProviders.length;
         uint256 len;
         if (offset < totalLen) {
@@ -134,20 +136,6 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
             address p = allProviders[offset + i];
             providersPage[i] = p;
             votesPage[i] = l.providerVotes[p];
-        }
-    }
-
-    function addProvider(BlazeSwapDelegationStorage.Layout storage l, address provider) private {
-        l.allProviders.push(provider);
-    }
-
-    function removeProvider(BlazeSwapDelegationStorage.Layout storage l, address provider) private {
-        for (uint256 i; i < l.allProviders.length; i++) {
-            if (l.allProviders[i] == provider) {
-                if (i < l.allProviders.length - 1) l.allProviders[i] = l.allProviders[l.allProviders.length - 1];
-                l.allProviders.pop();
-                return;
-            }
         }
     }
 
@@ -172,10 +160,10 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         if (fromProvider != toProvider && amount > 0) {
             if (fromProvider != address(0)) {
                 l.providerVotes[fromProvider] -= amount;
-                if (l.providerVotes[fromProvider] == 0) removeProvider(l, fromProvider);
+                if (l.providerVotes[fromProvider] == 0) l.allProviders.remove(fromProvider);
             }
             if (toProvider != address(0)) {
-                if (l.providerVotes[toProvider] == 0) addProvider(l, toProvider);
+                if (l.providerVotes[toProvider] == 0) l.allProviders.add(toProvider);
                 l.providerVotes[toProvider] += amount;
             }
         }
@@ -185,12 +173,12 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         uint256 max
     ) external view onlyDelegatedCall returns (address[] memory, uint256[] memory) {
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
-        uint256 allProvidersLen = l.allProviders.length;
+        uint256 allProvidersLen = l.allProviders.list.length;
         uint256 len = Math.min(max, allProvidersLen);
         address[] memory p = new address[](len);
         uint256[] memory v = new uint256[](len);
         for (uint256 i; i < allProvidersLen; i++) {
-            address provider = l.allProviders[i];
+            address provider = l.allProviders.list[i];
             uint256 votes = l.providerVotes[provider];
             uint256 j;
             while (j < len && votes <= v[j]) j++;
@@ -243,7 +231,10 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
     ) private view {
         uint256 len = newProviders.length;
         require(len > 0, 'BlazeSwap: NO_PROVIDERS');
-        require(len == Math.min(l.allProviders.length, l.plugin.maxDelegatesByPercent()), 'BlazeSwap: PROVIDERS_COUNT');
+        require(
+            len == Math.min(l.allProviders.list.length, l.plugin.maxDelegatesByPercent()),
+            'BlazeSwap: PROVIDERS_COUNT'
+        );
         uint256 newTotal;
         uint256 prevVotes = type(uint256).max;
         for (uint256 i; i < len; i++) {
