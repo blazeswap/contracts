@@ -473,6 +473,9 @@ describe('BlazeSwapDelegation', () => {
   it('withdrawRewardFees', async () => {
     const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, other1)
 
+    await expect(idelegation.withdrawRewardFees(true)).to.be.revertedWith('BlazeSwap: FORBIDDEN')
+    await manager.addRewardsFeeClaimer(other1.address)
+
     const rewardAmount = expandTo18Decimals(2)
 
     expect(await idelegation.callStatic.withdrawRewardFees(true)).to.be.eq(0)
@@ -493,8 +496,10 @@ describe('BlazeSwapDelegation', () => {
     await expect(() => idelegation.withdrawRewardFees(false)).to.changeEtherBalance(other1, rewardAmount)
   })
 
-  it('withdrawRewardFees:newWNat-wrapped', async () => {
+  it('withdrawRewardFees: get oldWNat if newWNat is not allowed', async () => {
     const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, other1)
+
+    await manager.addRewardsFeeClaimer(other1.address)
 
     const rewardAmount = expandTo18Decimals(2)
 
@@ -506,22 +511,25 @@ describe('BlazeSwapDelegation', () => {
     await registry.setContractAddress('WNat', newWNat.address, [])
 
     expect(await idelegation.callStatic.withdrawRewardFees(true)).to.be.eq(rewardAmount)
-    await expect(() => idelegation.withdrawRewardFees(true)).to.changeTokenBalance(newWNat, other1, rewardAmount)
+    await expect(() => idelegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other1, rewardAmount)
   })
 
-  it('withdrawRewardFees:newWNat-native', async () => {
+  it('withdrawRewardFees: get newWNat if allowed', async () => {
     const idelegation = IIBlazeSwapDelegation__factory.connect(pair.address, other1)
+
+    await manager.addRewardsFeeClaimer(other1.address)
 
     const rewardAmount = expandTo18Decimals(2)
 
     await wNat.transfer(rewardManagerAddress, rewardAmount)
 
     await manager.setRewardsFeeTo(other1.address)
+    await manager.setAllowWNatReplacement(other1.address)
 
     const newWNat = await deployContract(wallet, WNAT)
     await registry.setContractAddress('WNat', newWNat.address, [])
 
-    expect(await idelegation.callStatic.withdrawRewardFees(false)).to.be.eq(rewardAmount)
-    await expect(() => idelegation.withdrawRewardFees(false)).to.changeEtherBalance(other1, rewardAmount)
+    expect(await idelegation.callStatic.withdrawRewardFees(true)).to.be.eq(rewardAmount)
+    await expect(() => idelegation.withdrawRewardFees(true)).to.changeTokenBalance(newWNat, other1, rewardAmount)
   })
 })

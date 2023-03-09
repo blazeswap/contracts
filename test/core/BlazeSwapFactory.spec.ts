@@ -48,17 +48,17 @@ describe('BlazeSwapFactory', () => {
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(4331259)
+    expect(receipt.gasUsed).to.eq(4331455)
   })
 
   it('createPairWithWNat:gas', async () => {
     const tokens: [string, string] = [
-      '0x1000000000000000000000000000000000000001',
+      '0x0000000000000000000000000000000000000001',
       await registry.getContractAddressByName('WNat'),
     ]
     const tx = await factory.createPair(...tokens)
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.be.within(5692500, 5692600)
+    expect(receipt.gasUsed).to.eq(5715081)
   })
 
   it('createPairWithFlareAsset:upgradeFlareAssetPair', async () => {

@@ -56,10 +56,9 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IBlazeSwapDelegationPlugin plugin = IBlazeSwapDelegationPlugin(_plugin);
         l.plugin = plugin;
-        l.rewardManager = IIBlazeSwapRewardManager(
-            address(new MinimalPayableProxy(BlazeSwapPairStorage.layout().manager.rewardManager()))
-        );
-        l.rewardManager.initialize();
+        IBlazeSwapManager manager = BlazeSwapPairStorage.layout().manager;
+        l.rewardManager = IIBlazeSwapRewardManager(address(new MinimalPayableProxy(manager.rewardManager())));
+        l.rewardManager.initialize(manager);
         address[] memory initialProviders = new address[](1);
         initialProviders[0] = plugin.initialProvider();
         changeProviders(l, initialProviders);
@@ -294,7 +293,9 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
     }
 
     function withdrawRewardFees(bool wrapped) external onlyDelegatedCall lock returns (uint256 rewardFees) {
-        address[] storage plugins = BlazeSwapPairStorage.layout().pluginImpls;
+        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
+        require(pl.manager.isRewardsFeeClaimer(msg.sender), 'BlazeSwap: FORBIDDEN');
+        address[] storage plugins = pl.pluginImpls;
         BlazeSwapDelegationStorage.Layout storage l = BlazeSwapDelegationStorage.layout();
         IIBlazeSwapRewardManager rewardManager = l.rewardManager; // gas savings
         uint256 totalRewards;
@@ -308,7 +309,7 @@ contract BlazeSwapDelegation is IBlazeSwapDelegation, IIBlazeSwapDelegation, Del
         uint256 balance = rewardManager.rewardsBalance();
         rewardFees = balance - totalRewards;
         if (rewardFees > 0) {
-            address feeTo = BlazeSwapPairStorage.layout().manager.rewardsFeeTo();
+            address feeTo = pl.manager.rewardsFeeTo();
             require(feeTo != address(0), 'BlazeSwap: ZERO_ADDRESS');
             require(feeTo == msg.sender, 'BlazeSwap: FORBIDDEN');
             rewardManager.sendRewards(feeTo, rewardFees, !wrapped);

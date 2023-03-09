@@ -489,6 +489,7 @@ describe('BlazeSwapAirdrop', () => {
     })
 
     it('withdrawRewardFees', async () => {
+      await manager.addRewardsFeeClaimer(other.address)
       await manager.setRewardsFeeTo(other.address)
       await manager.setAirdropFeeBips(50)
 
@@ -509,6 +510,7 @@ describe('BlazeSwapAirdrop', () => {
     })
 
     it('claimAirdrops:afterFee', async () => {
+      await manager.addRewardsFeeClaimer(other.address)
       await manager.setRewardsFeeTo(other.address)
       await manager.setAirdropFeeBips(50)
 

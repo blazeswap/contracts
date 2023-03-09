@@ -565,6 +565,7 @@ describe('BlazeSwapFtsoReward', () => {
   })
 
   it('withdrawRewardFees', async () => {
+    await manager.addRewardsFeeClaimer(other.address)
     await manager.setRewardsFeeTo(other.address)
     await manager.setFtsoRewardsFeeBips(1_90)
 
@@ -588,6 +589,7 @@ describe('BlazeSwapFtsoReward', () => {
   })
 
   it('claimFtsoRewards:afterFee', async () => {
+    await manager.addRewardsFeeClaimer(other.address)
     await manager.setRewardsFeeTo(other.address)
     await manager.setFtsoRewardsFeeBips(1_90)
 

@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import '../shared/libraries/TransferHelper.sol';
 import '../shared/DelegatedCalls.sol';
 import '../shared/ParentRelation.sol';
+import './interfaces/erc721/IERC721.sol';
+import './interfaces/erc1155/IERC1155.sol';
 import './interfaces/flare/IWNat.sol';
 import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapDelegationPlugin.sol';
@@ -17,13 +19,25 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
 
     bool private initialized;
 
+    IBlazeSwapManager private manager;
+
     IWNat private wNat;
 
     uint256 private nextEpochToDistribute;
 
-    function initialize() external onlyDelegatedCall {
+    function checkRewardsFeeClaimer() private view {
+        require(manager.isRewardsFeeClaimer(msg.sender), 'BlazeSwapRewardManager: FORBIDDEN');
+    }
+
+    modifier onlyRewardsFeeClaimer() {
+        checkRewardsFeeClaimer();
+        _;
+    }
+
+    function initialize(IBlazeSwapManager _manager) external onlyDelegatedCall {
         require(!initialized, 'BlazeSwapRewardManager: INITIALIZED');
         initParentRelation(msg.sender);
+        manager = _manager;
         wNat = FlareLibrary.getWNat();
         nextEpochToDistribute = FlareLibrary.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
         initialized = true;
@@ -33,10 +47,12 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
 
     function changeProviders(address[] calldata providers) external onlyDelegatedCall onlyParent {
         wNat.changeProviders(providers, type(uint256).max);
-        rewrapRewardsIfNeeded();
+        replaceWNatIfNeeded();
     }
 
-    function claimFtsoRewards(uint256[] calldata epochs) external onlyDelegatedCall returns (uint256 amount) {
+    function claimFtsoRewards(
+        uint256[] calldata epochs
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer returns (uint256 amount) {
         if (epochs.length == 0) return 0;
         uint256 maxEpoch = epochs[epochs.length - 1];
         for (uint256 i = epochs.length - 1; i > 0; i--) {
@@ -69,21 +85,22 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         wrapRewards();
     }
 
-    function rewrapRewardsIfNeeded() public onlyDelegatedCall returns (bool) {
-        IWNat latest = FlareLibrary.getWNat();
-        if (latest != wNat) {
-            wNat.withdraw(wNat.balanceOf(address(this)));
-            latest.deposit{value: address(this).balance}();
-            (address[] memory providers, , , ) = wNat.delegatesOf(address(this));
-            latest.changeProviders(providers, type(uint256).max);
-            wNat = latest;
-            return true;
-        } else {
-            return false;
+    function replaceWNatIfNeeded() public onlyDelegatedCall {
+        if (manager.allowWNatReplacement()) {
+            IWNat latest = FlareLibrary.getWNat();
+            if (latest != wNat) {
+                uint256 balance = wNat.balanceOf(address(this));
+                wNat.withdraw(balance);
+                latest.deposit{value: balance}();
+                require(latest.balanceOf(address(this)) >= balance, 'BlazeSwapRewardManager: BALANCE');
+                (address[] memory providers, , , ) = wNat.delegatesOf(address(this));
+                latest.changeProviders(providers, type(uint256).max);
+                wNat = latest;
+            }
         }
     }
 
-    function claimAirdrop(uint256 month) external onlyDelegatedCall returns (uint256 amount) {
+    function claimAirdrop(uint256 month) external onlyDelegatedCall onlyRewardsFeeClaimer returns (uint256 amount) {
         IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
             amount = distribution.claim(payable(this), month);
@@ -96,19 +113,44 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
     }
 
     function wrapRewards() public onlyDelegatedCall {
-        if (!rewrapRewardsIfNeeded()) {
-            if (address(this).balance > 0) wNat.deposit{value: address(this).balance}();
-        }
+        if (address(this).balance > 0) wNat.deposit{value: address(this).balance}();
+        replaceWNatIfNeeded();
     }
 
     // re-entrancy check in parent
     function sendRewards(address to, uint256 amount, bool unwrap) external onlyDelegatedCall onlyParent {
-        rewrapRewardsIfNeeded();
+        replaceWNatIfNeeded();
         if (unwrap) {
             wNat.withdraw(amount);
             TransferHelper.safeTransferNAT(to, amount);
         } else {
             wNat.transfer(to, amount);
         }
+    }
+
+    function withdrawERC20(
+        address token,
+        uint256 amount,
+        address destination
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+        require(token != address(wNat), 'BlazeSwapRewardManager: WNAT');
+        IERC20(token).transfer(destination, amount);
+    }
+
+    function withdrawERC721(
+        address token,
+        uint256 id,
+        address destination
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+        IERC721(token).transferFrom(address(this), destination, id);
+    }
+
+    function withdrawERC1155(
+        address token,
+        uint256 id,
+        uint256 amount,
+        address destination
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+        IERC1155(token).safeTransferFrom(address(this), destination, id, amount, '');
     }
 }

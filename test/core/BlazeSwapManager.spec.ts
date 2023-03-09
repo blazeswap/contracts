@@ -25,7 +25,41 @@ describe('BlazeSwapManager', () => {
     flareAssetRegistry = fixture.flareAssetRegistry
   })
 
-  it('rewardsFeeTo, ftsoRewardsFeeBips', async () => {
+  it('rewardsFeeClaimers, allowWNatReplacement', async () => {
+    expect(await manager.rewardsFeeClaimers()).to.deep.eq([])
+    expect(await manager.allowWNatReplacement()).to.eq(false)
+  })
+
+  it('addRewardsFeeClaimer, removeRewardsFeeClaimer, isRewardsFeeClaimer, rewardsFeeClaimers', async () => {
+    await expect(manager.connect(other).addRewardsFeeClaimer(other.address)).to.be.revertedWith(
+      'Configurable: FORBIDDEN'
+    )
+    await expect(manager.connect(other).removeRewardsFeeClaimer(other.address)).to.be.revertedWith(
+      'Configurable: FORBIDDEN'
+    )
+
+    await manager.addRewardsFeeClaimer(wallet.address)
+    await manager.addRewardsFeeClaimer(other.address)
+    await manager.addRewardsFeeClaimer(other.address)
+
+    expect(await manager.rewardsFeeClaimers()).to.deep.eq([wallet.address, other.address])
+
+    await manager.removeRewardsFeeClaimer(wallet.address)
+
+    expect(await manager.isRewardsFeeClaimer(wallet.address)).to.eq(false)
+
+    expect(await manager.isRewardsFeeClaimer(other.address)).to.eq(true)
+  })
+
+  it('setAllowWNatReplacement', async () => {
+    await expect(manager.connect(other).setAllowWNatReplacement(true)).to.be.revertedWith('Configurable: FORBIDDEN')
+    await manager.setAllowWNatReplacement(true)
+    expect(await manager.allowWNatReplacement()).to.eq(true)
+    await manager.setAllowWNatReplacement(false)
+    expect(await manager.allowWNatReplacement()).to.eq(false)
+  })
+
+  it('rewardsFeeTo, ftsoRewardsFeeBips, flareAssetRewardsFeeBips, airdropFeeBips', async () => {
     expect(await manager.rewardsFeeTo()).to.eq(constants.AddressZero)
     expect(await manager.ftsoRewardsFeeBips()).to.eq(0)
     expect(await manager.flareAssetRewardsFeeBips()).to.eq(0)

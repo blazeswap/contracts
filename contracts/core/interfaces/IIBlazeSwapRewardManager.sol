@@ -2,8 +2,10 @@
 pragma solidity >=0.7.5;
 pragma abicoder v2;
 
+import './IBlazeSwapManager.sol';
+
 interface IIBlazeSwapRewardManager {
-    function initialize() external;
+    function initialize(IBlazeSwapManager manager) external;
 
     function changeProviders(address[] calldata providers) external;
 
@@ -13,9 +15,15 @@ interface IIBlazeSwapRewardManager {
 
     function rewardsBalance() external view returns (uint256 amount);
 
-    function rewrapRewardsIfNeeded() external returns (bool);
+    function replaceWNatIfNeeded() external;
 
     function wrapRewards() external;
 
     function sendRewards(address to, uint256 amount, bool unwrap) external;
+
+    function withdrawERC20(address token, uint256 amount, address destination) external;
+
+    function withdrawERC721(address token, uint256 id, address destination) external;
+
+    function withdrawERC1155(address token, uint256 id, uint256 amount, address destination) external;
 }

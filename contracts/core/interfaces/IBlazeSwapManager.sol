@@ -7,6 +7,18 @@ import './IBlazeSwapBaseManager.sol';
 import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
+    function addRewardsFeeClaimer(address _rewardsFeeClaimer) external;
+
+    function removeRewardsFeeClaimer(address _rewardsFeeClaimer) external;
+
+    function rewardsFeeClaimers() external view returns (address[] memory);
+
+    function isRewardsFeeClaimer(address _rewardsFeeClaimer) external view returns (bool);
+
+    function setAllowWNatReplacement(bool _allowWNatReplacement) external;
+
+    function allowWNatReplacement() external view returns (bool);
+
     function setRewardsFeeTo(address _rewardsFeeTo) external;
 
     function rewardsFeeTo() external view returns (address);
