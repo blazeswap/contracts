@@ -5,7 +5,7 @@ import './interfaces/IBlazeSwapFactory.sol';
 import './interfaces/IBlazeSwapFlareAssetReward.sol';
 import './interfaces/IBlazeSwapFlareAssetRewardPlugin.sol';
 import './interfaces/IBlazeSwapPair.sol';
-import './interfaces/IIBlazeSwapReward.sol';
+import './interfaces/IIBlazeSwapRewardsHook.sol';
 
 import '../shared/libraries/TransferHelper.sol';
 import '../shared/DelegatedCalls.sol';
@@ -41,7 +41,13 @@ library BlazeSwapFlareAssetRewardStorage {
     }
 }
 
-contract BlazeSwapFlareAssetReward is IBlazeSwapFlareAssetReward, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
+contract BlazeSwapFlareAssetReward is
+    IBlazeSwapFlareAssetReward,
+    IBlazeSwapPluginImpl,
+    IIBlazeSwapRewardsHook,
+    ReentrancyLock,
+    DelegatedCalls
+{
     function initialize(address _plugin) external onlyDelegatedCall {
         IBlazeSwapFlareAssetRewardPlugin plugin = IBlazeSwapFlareAssetRewardPlugin(_plugin);
 
@@ -74,8 +80,9 @@ contract BlazeSwapFlareAssetReward is IBlazeSwapFlareAssetReward, IIBlazeSwapRew
         s[1] = IBlazeSwapFlareAssetReward.flareAssetConfigParams.selector;
     }
 
-    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {
+    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) {
         selectors = pluginSelectors();
         interfaceId = type(IBlazeSwapFlareAssetReward).interfaceId;
+        hooksSet = BlazeSwapPairStorage.RewardsHook;
     }
 }

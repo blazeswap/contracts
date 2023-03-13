@@ -22,9 +22,11 @@ import {
   IIBlazeSwapPluginImpl__factory,
   IWNat,
   IBlazeSwapExecutorManager__factory,
-  IIBlazeSwapDelegation,
-  IIBlazeSwapDelegation__factory,
+  IBlazeSwapRewards,
+  IBlazeSwapRewards__factory,
   FlareContractRegistry,
+  IBlazeSwapRewardsPlugin,
+  IBlazeSwapRewardsPlugin__factory,
 } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
@@ -42,7 +44,8 @@ describe('BlazeSwapFtsoReward', () => {
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
-  let delegation: IIBlazeSwapDelegation
+  let rewardsPlugin: IBlazeSwapRewardsPlugin
+  let rewards: IBlazeSwapRewards
   let ftsoReward: IBlazeSwapFtsoReward
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
@@ -54,7 +57,8 @@ describe('BlazeSwapFtsoReward', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, other)
+    rewardsPlugin = IBlazeSwapRewardsPlugin__factory.connect(await manager.rewardsPlugin(), wallet)
+    rewards = IBlazeSwapRewards__factory.connect(pair.address, other)
     ftsoReward = IBlazeSwapFtsoReward__factory.connect(pair.address, wallet)
   })
 
@@ -542,7 +546,7 @@ describe('BlazeSwapFtsoReward', () => {
   })
 
   it('ftsoRewardsFeeBips', async () => {
-    await manager.setRewardsFeeTo(other.address)
+    await rewardsPlugin.setRewardsFeeTo(other.address)
     await manager.setFtsoRewardsFeeBips(1_90)
 
     await wNat.transfer(pair.address, expandTo18Decimals(100))
@@ -565,8 +569,8 @@ describe('BlazeSwapFtsoReward', () => {
   })
 
   it('withdrawRewardFees', async () => {
-    await manager.addRewardsFeeClaimer(other.address)
-    await manager.setRewardsFeeTo(other.address)
+    await rewardsPlugin.addRewardsFeeClaimer(other.address)
+    await rewardsPlugin.setRewardsFeeTo(other.address)
     await manager.setFtsoRewardsFeeBips(1_90)
 
     await wNat.transfer(pair.address, expandTo18Decimals(100))
@@ -582,15 +586,15 @@ describe('BlazeSwapFtsoReward', () => {
 
     await ftsoReward.distributeFtsoRewards([1])
 
-    await expect(() => delegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedRewardFees)
+    await expect(() => rewards.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedRewardFees)
 
     const rewardManagerAddress = getRewardManagerAddress(pair.address)
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedDistributedRewards)
   })
 
   it('claimFtsoRewards:afterFee', async () => {
-    await manager.addRewardsFeeClaimer(other.address)
-    await manager.setRewardsFeeTo(other.address)
+    await rewardsPlugin.addRewardsFeeClaimer(other.address)
+    await rewardsPlugin.setRewardsFeeTo(other.address)
     await manager.setFtsoRewardsFeeBips(1_90)
 
     await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
@@ -604,7 +608,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     const { epochs, amounts } = await ftsoReward.epochsWithUnclaimedFtsoRewards(wallet.address)
 
-    await delegation.withdrawRewardFees(true)
+    await rewards.withdrawRewardFees(true)
 
     await expect(() => ftsoReward.claimFtsoRewards(epochs, wallet.address, true)).to.changeTokenBalance(
       wNat,
@@ -618,7 +622,7 @@ describe('BlazeSwapFtsoReward', () => {
 
     expect(await wNat.balanceOf(rewardManagerAddress)).to.gt(BigNumber.from('0'))
 
-    await delegation.withdrawRewardFees(true)
+    await rewards.withdrawRewardFees(true)
 
     expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(BigNumber.from('0'))
   })

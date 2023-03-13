@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import '../shared/libraries/AddressSet.sol';
 import './interfaces/flare/IFlareAssetRegistry.sol';
 import './interfaces/flare/IFtsoRewardManager.sol';
 import './interfaces/IBlazeSwapManager.sol';
@@ -12,12 +11,6 @@ import './BlazeSwapBaseManager.sol';
 import './BlazeSwapExecutorManager.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
-    using AddressSet for AddressSet.State;
-
-    AddressSet.State private rewardsFeeClaimer;
-
-    address public rewardsFeeTo;
-
     uint256 public ftsoRewardsFeeBips;
     uint256 public flareAssetRewardsFeeBips;
     uint256 public airdropFeeBips;
@@ -26,10 +19,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     bool public allowFlareAssetPairsWithoutPlugin;
 
-    bool public allowWNatReplacement;
-
-    address public rewardManager;
-
+    address public rewardsPlugin;
     address public delegationPlugin;
     address public ftsoRewardPlugin;
     address public flareAssetRewardPlugin;
@@ -37,30 +27,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
 
     constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
-    }
-
-    function addRewardsFeeClaimer(address _rewardsFeeClaimer) external onlyConfigSetter {
-        rewardsFeeClaimer.add(_rewardsFeeClaimer);
-    }
-
-    function removeRewardsFeeClaimer(address _rewardsFeeClaimer) external onlyConfigSetter {
-        rewardsFeeClaimer.remove(_rewardsFeeClaimer);
-    }
-
-    function rewardsFeeClaimers() external view returns (address[] memory) {
-        return rewardsFeeClaimer.list;
-    }
-
-    function isRewardsFeeClaimer(address _rewardsFeeClaimer) external view returns (bool) {
-        return rewardsFeeClaimer.index[_rewardsFeeClaimer] != 0;
-    }
-
-    function setAllowWNatReplacement(bool _allowWNatReplacement) external onlyConfigSetter {
-        allowWNatReplacement = _allowWNatReplacement;
-    }
-
-    function setRewardsFeeTo(address _rewardsFeeTo) external onlyConfigSetter {
-        rewardsFeeTo = _rewardsFeeTo;
     }
 
     function setFtsoRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
@@ -82,9 +48,11 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         revert('BlazeSwap: ALREADY_SET');
     }
 
-    function setRewardManager(address _rewardManager) external onlyConfigSetter {
-        if (rewardManager != address(0)) revertAlreadySet();
-        rewardManager = _rewardManager;
+    function setRewardsPlugin(address _rewardsPlugin) external onlyConfigSetter {
+        if (rewardsPlugin != address(0)) revertAlreadySet();
+        address impl = IBlazeSwapPlugin(_rewardsPlugin).implementation();
+        require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');
+        rewardsPlugin = _rewardsPlugin;
     }
 
     function setDelegationPlugin(address _delegationPlugin) external onlyConfigSetter {

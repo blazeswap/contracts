@@ -11,7 +11,12 @@ interface IDistributionToDelegators {
 
     function getClaimableAmountOf(address account, uint256 _month) external view returns (uint256 _amountWei);
 
-    function claim(address _rewardOwner, address _recipient, uint256 _month, bool _wrap) external returns(uint256 _rewardAmount);
+    function claim(
+        address _rewardOwner,
+        address _recipient,
+        uint256 _month,
+        bool _wrap
+    ) external returns (uint256 _rewardAmount);
 
     function getCurrentMonth() external view returns (uint256 _currentMonth);
 

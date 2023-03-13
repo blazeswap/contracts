@@ -69,7 +69,12 @@ contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpd
         }
     }
 
-    function claim(address _rewardOwner, address _recipient, uint256 _month, bool _wrap) external returns(uint256 _rewardAmount) {
+    function claim(
+        address _rewardOwner,
+        address _recipient,
+        uint256 _month,
+        bool _wrap
+    ) external returns (uint256 _rewardAmount) {
         require(_rewardOwner == msg.sender, 'Executor unsupported');
         require(!_wrap, 'Wrapping unsupported');
         for (uint256 i; i < airdrops[msg.sender].length; i++) {

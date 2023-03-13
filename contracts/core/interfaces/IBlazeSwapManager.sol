@@ -7,22 +7,6 @@ import './IBlazeSwapBaseManager.sol';
 import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
-    function addRewardsFeeClaimer(address _rewardsFeeClaimer) external;
-
-    function removeRewardsFeeClaimer(address _rewardsFeeClaimer) external;
-
-    function rewardsFeeClaimers() external view returns (address[] memory);
-
-    function isRewardsFeeClaimer(address _rewardsFeeClaimer) external view returns (bool);
-
-    function setAllowWNatReplacement(bool _allowWNatReplacement) external;
-
-    function allowWNatReplacement() external view returns (bool);
-
-    function setRewardsFeeTo(address _rewardsFeeTo) external;
-
-    function rewardsFeeTo() external view returns (address);
-
     function setFtsoRewardsFeeBips(uint256 _bips) external;
 
     function ftsoRewardsFeeBips() external view returns (uint256);
@@ -39,7 +23,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function getTokenType(address token) external view returns (TokenType tokenType);
 
-    function rewardManager() external view returns (address);
+    function rewardsPlugin() external view returns (address);
 
     function delegationPlugin() external view returns (address);
 
@@ -53,7 +37,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function allowFlareAssetPairsWithoutPlugin() external view returns (bool);
 
-    function setRewardManager(address _rewardManager) external;
+    function setRewardsPlugin(address _rewardsPlugin) external;
 
     function setDelegationPlugin(address _delegationPlugin) external;
 

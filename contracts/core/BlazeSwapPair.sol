@@ -12,7 +12,7 @@ import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapPair.sol';
 import './interfaces/IBlazeSwapPlugin.sol';
 import './interfaces/IIBlazeSwapPluginImpl.sol';
-import './interfaces/IIBlazeSwapDelegation.sol';
+import './interfaces/IIBlazeSwapTransferHook.sol';
 
 library BlazeSwapPairStorage {
     struct Layout {
@@ -23,7 +23,9 @@ library BlazeSwapPairStorage {
         TokenType type1;
         mapping(bytes4 => bool) supportedInterfaces;
         mapping(bytes4 => address) pluginSelector;
-        address[] pluginImpls; // first for delegation, others for rewards
+        address[] pluginImpls;
+        address[] transferPluginImpls;
+        address[] rewardsPluginImpls;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256('blazeswap.storage.BlazeSwapPair');
@@ -34,6 +36,9 @@ library BlazeSwapPairStorage {
             l.slot := slot
         }
     }
+
+    uint256 internal constant TransferHook = 1 << 0;
+    uint256 internal constant RewardsHook = 1 << 1;
 }
 
 contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snapshot, BlazeSwapMulticall {
@@ -79,7 +84,9 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
         address impl = IBlazeSwapPlugin(plugin).implementation();
         BlazeSwapPairStorage.Layout storage l = BlazeSwapPairStorage.layout();
         l.pluginImpls.push(impl);
-        (bytes4[] memory selectors, bytes4 interfaceId) = IBlazeSwapPluginImpl(impl).pluginMetadata();
+        (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) = IBlazeSwapPluginImpl(impl).pluginMetadata();
+        if (hooksSet & BlazeSwapPairStorage.TransferHook != 0) l.transferPluginImpls.push(impl);
+        if (hooksSet & BlazeSwapPairStorage.RewardsHook != 0) l.rewardsPluginImpls.push(impl);
         for (uint256 i; i < selectors.length; i++) {
             require(l.pluginSelector[selectors[i]] == address(0));
             l.pluginSelector[selectors[i]] = impl;
@@ -107,11 +114,11 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
         super._beforeTokenTransfer(from, to, amount);
         // move votes
         BlazeSwapPairStorage.Layout storage l = BlazeSwapPairStorage.layout();
-        if (l.pluginImpls.length > 0) {
-            address plugin = l.pluginImpls[0];
+        for (uint256 i; i < l.transferPluginImpls.length; i++) {
+            address plugin = l.transferPluginImpls[i];
             DelegateCallHelper.delegateAndCheckResult(
                 plugin,
-                abi.encodeWithSelector(IIBlazeSwapDelegation.transferDelegatorVotes.selector, from, to, amount)
+                abi.encodeWithSelector(IIBlazeSwapTransferHook.transferCallback.selector, from, to, amount)
             );
         }
     }
@@ -126,7 +133,7 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
         facets_ = new Facet[](length);
         for (uint256 i; i < length; i++) {
             address plugin = l.pluginImpls[i];
-            (bytes4[] memory selectors, ) = IBlazeSwapPluginImpl(plugin).pluginMetadata();
+            (bytes4[] memory selectors, , ) = IBlazeSwapPluginImpl(plugin).pluginMetadata();
             facets_[i] = Facet(plugin, selectors);
         }
     }
@@ -136,7 +143,7 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
         uint256 length = l.pluginImpls.length;
         for (uint256 i; i < length; i++) {
             if (l.pluginImpls[i] == _facet) {
-                (facetFunctionSelectors_, ) = IBlazeSwapPluginImpl(_facet).pluginMetadata();
+                (facetFunctionSelectors_, , ) = IBlazeSwapPluginImpl(_facet).pluginMetadata();
                 break;
             }
         }

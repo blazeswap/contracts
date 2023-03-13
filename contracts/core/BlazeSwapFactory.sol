@@ -22,8 +22,7 @@ contract BlazeSwapFactory is IBlazeSwapFactory, BlazeSwapBaseFactory {
         TokenType type1 = m.getTokenType(token1);
         p.initialize(manager, token0, token1, type0, type1);
         if (type0 != TokenType.Generic || type1 != TokenType.Generic) {
-            // the following code assumes that the delegation and ftsoRewards
-            // plugins are available from the beginning
+            p.addPlugin(m.rewardsPlugin());
             p.addPlugin(m.delegationPlugin());
             if (type0 == TokenType.WNat || type1 == TokenType.WNat) {
                 p.addPlugin(m.ftsoRewardPlugin());

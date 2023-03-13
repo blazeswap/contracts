@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import './interfaces/IBlazeSwapExecutorManager.sol';
 import './interfaces/IBlazeSwapFtsoReward.sol';
 import './interfaces/IBlazeSwapPair.sol';
-import './interfaces/IIBlazeSwapReward.sol';
+import './interfaces/IIBlazeSwapRewardsHook.sol';
 import './interfaces/IIBlazeSwapRewardManager.sol';
 
 import '../shared/DelegatedCalls.sol';
@@ -39,7 +39,13 @@ library BlazeSwapFtsoRewardStorage {
     }
 }
 
-contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
+contract BlazeSwapFtsoReward is
+    IBlazeSwapFtsoReward,
+    IBlazeSwapPluginImpl,
+    IIBlazeSwapRewardsHook,
+    ReentrancyLock,
+    DelegatedCalls
+{
     using FlareLibrary for IFtsoManager;
 
     function initialize(address) external onlyDelegatedCall {
@@ -344,8 +350,9 @@ contract BlazeSwapFtsoReward is IBlazeSwapFtsoReward, IIBlazeSwapReward, Reentra
         s[6] = IBlazeSwapFtsoReward.claimedFtsoRewards.selector;
     }
 
-    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {
+    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) {
         selectors = pluginSelectors();
         interfaceId = type(IBlazeSwapFtsoReward).interfaceId;
+        hooksSet = BlazeSwapPairStorage.RewardsHook;
     }
 }

@@ -7,8 +7,7 @@ import '../shared/ParentRelation.sol';
 import './interfaces/erc721/IERC721.sol';
 import './interfaces/erc1155/IERC1155.sol';
 import './interfaces/flare/IWNat.sol';
-import './interfaces/IBlazeSwapManager.sol';
-import './interfaces/IBlazeSwapDelegationPlugin.sol';
+import './interfaces/IBlazeSwapRewardsPlugin.sol';
 import './interfaces/IIBlazeSwapRewardManager.sol';
 import './libraries/Delegator.sol';
 import './libraries/FlareLibrary.sol';
@@ -19,14 +18,14 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
 
     bool private initialized;
 
-    IBlazeSwapManager private manager;
+    IBlazeSwapRewardsPlugin private rewardsPlugin;
 
     IWNat private wNat;
 
     uint256 private nextEpochToDistribute;
 
     function checkRewardsFeeClaimer() private view {
-        require(manager.isRewardsFeeClaimer(msg.sender), 'BlazeSwapRewardManager: FORBIDDEN');
+        require(rewardsPlugin.isRewardsFeeClaimer(msg.sender), 'BlazeSwapRewardManager: FORBIDDEN');
     }
 
     modifier onlyRewardsFeeClaimer() {
@@ -34,10 +33,10 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         _;
     }
 
-    function initialize(IBlazeSwapManager _manager) external onlyDelegatedCall {
+    function initialize(IBlazeSwapRewardsPlugin _rewardsPlugin) external onlyDelegatedCall {
         require(!initialized, 'BlazeSwapRewardManager: INITIALIZED');
         initParentRelation(msg.sender);
-        manager = _manager;
+        rewardsPlugin = _rewardsPlugin;
         wNat = FlareLibrary.getWNat();
         nextEpochToDistribute = FlareLibrary.getFtsoManager().getCurrentFtsoRewardEpoch() + 1;
         initialized = true;
@@ -86,7 +85,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
     }
 
     function replaceWNatIfNeeded() public onlyDelegatedCall {
-        if (manager.allowWNatReplacement()) {
+        if (rewardsPlugin.allowWNatReplacement()) {
             IWNat latest = FlareLibrary.getWNat();
             if (latest != wNat) {
                 uint256 balance = wNat.balanceOf(address(this));

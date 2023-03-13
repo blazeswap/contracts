@@ -11,8 +11,8 @@ import DistributionToDelegatorsABI from '../../artifacts/contracts/core/test/Dis
 import { Coder } from 'abi-coder'
 
 import {
-  IIBlazeSwapDelegation,
-  IIBlazeSwapDelegation__factory,
+  IBlazeSwapRewards,
+  IBlazeSwapRewards__factory,
   IBlazeSwapManager,
   IBlazeSwapPair,
   IBlazeSwapPlugin__factory,
@@ -24,6 +24,8 @@ import {
   IBlazeSwapAirdrop,
   IBlazeSwapAirdrop__factory,
   FlareContractRegistry,
+  IBlazeSwapRewardsPlugin,
+  IBlazeSwapRewardsPlugin__factory,
 } from '../../typechain-types'
 
 const { createFixtureLoader, deployContract } = waffle
@@ -40,7 +42,8 @@ describe('BlazeSwapAirdrop', () => {
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
-  let delegation: IIBlazeSwapDelegation
+  let rewardsPlugin: IBlazeSwapRewardsPlugin
+  let rewards: IBlazeSwapRewards
   let airdrop: IBlazeSwapAirdrop
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
@@ -51,7 +54,8 @@ describe('BlazeSwapAirdrop', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    delegation = IIBlazeSwapDelegation__factory.connect(pair.address, other)
+    rewardsPlugin = IBlazeSwapRewardsPlugin__factory.connect(await manager.rewardsPlugin(), wallet)
+    rewards = IBlazeSwapRewards__factory.connect(pair.address, other)
     airdrop = IBlazeSwapAirdrop__factory.connect(pair.address, wallet)
   })
 
@@ -469,7 +473,7 @@ describe('BlazeSwapAirdrop', () => {
     })
 
     it('airdropFeeBips', async () => {
-      await manager.setRewardsFeeTo(other.address)
+      await rewardsPlugin.setRewardsFeeTo(other.address)
       await manager.setAirdropFeeBips(50)
 
       const totalAirdrop = BigNumber.from('1000')
@@ -489,8 +493,8 @@ describe('BlazeSwapAirdrop', () => {
     })
 
     it('withdrawRewardFees', async () => {
-      await manager.addRewardsFeeClaimer(other.address)
-      await manager.setRewardsFeeTo(other.address)
+      await rewardsPlugin.addRewardsFeeClaimer(other.address)
+      await rewardsPlugin.setRewardsFeeTo(other.address)
       await manager.setAirdropFeeBips(50)
 
       const totalAirdrop = BigNumber.from('1000')
@@ -503,15 +507,15 @@ describe('BlazeSwapAirdrop', () => {
 
       await airdrop.distributeAirdrop(0)
 
-      await expect(() => delegation.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedAirdropFees)
+      await expect(() => rewards.withdrawRewardFees(true)).to.changeTokenBalance(wNat, other, expectedAirdropFees)
 
       const rewardManagerAddress = getRewardManagerAddress(pair.address)
       expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(expectedDistributedAirdrop)
     })
 
     it('claimAirdrops:afterFee', async () => {
-      await manager.addRewardsFeeClaimer(other.address)
-      await manager.setRewardsFeeTo(other.address)
+      await rewardsPlugin.addRewardsFeeClaimer(other.address)
+      await rewardsPlugin.setRewardsFeeTo(other.address)
       await manager.setAirdropFeeBips(50)
 
       await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
@@ -523,7 +527,7 @@ describe('BlazeSwapAirdrop', () => {
 
       const { months, amounts } = await airdrop.monthsWithUnclaimedAirdrop(wallet.address)
 
-      await delegation.withdrawRewardFees(true)
+      await rewards.withdrawRewardFees(true)
 
       await expect(() => airdrop.claimAirdrops(months, wallet.address, true)).to.changeTokenBalance(
         wNat,
@@ -537,7 +541,7 @@ describe('BlazeSwapAirdrop', () => {
 
       expect(await wNat.balanceOf(rewardManagerAddress)).to.gt(BigNumber.from('0'))
 
-      await delegation.withdrawRewardFees(true)
+      await rewards.withdrawRewardFees(true)
 
       expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(BigNumber.from('0'))
     })

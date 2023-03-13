@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import './interfaces/IBlazeSwapExecutorManager.sol';
 import './interfaces/IBlazeSwapAirdrop.sol';
 import './interfaces/IBlazeSwapPair.sol';
-import './interfaces/IIBlazeSwapReward.sol';
+import './interfaces/IIBlazeSwapRewardsHook.sol';
 import './interfaces/IIBlazeSwapRewardManager.sol';
 
 import '../shared/DelegatedCalls.sol';
@@ -42,7 +42,13 @@ library BlazeSwapAirdropStorage {
     }
 }
 
-contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLock, DelegatedCalls {
+contract BlazeSwapAirdrop is
+    IBlazeSwapAirdrop,
+    IBlazeSwapPluginImpl,
+    IIBlazeSwapRewardsHook,
+    ReentrancyLock,
+    DelegatedCalls
+{
     using FlareLibrary for IDistributionToDelegators;
 
     uint256 private constant NUMBER_OF_VOTE_POWER_BLOCKS = 3;
@@ -322,8 +328,9 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
         s[5] = IBlazeSwapAirdrop.claimedAirdrops.selector;
     }
 
-    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId) {
+    function pluginMetadata() external pure returns (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) {
         selectors = pluginSelectors();
         interfaceId = type(IBlazeSwapAirdrop).interfaceId;
+        hooksSet = BlazeSwapPairStorage.RewardsHook;
     }
 }

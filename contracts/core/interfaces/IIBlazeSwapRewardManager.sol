@@ -2,10 +2,11 @@
 pragma solidity >=0.7.5;
 pragma abicoder v2;
 
+import './IBlazeSwapRewardsPlugin.sol';
 import './IBlazeSwapManager.sol';
 
 interface IIBlazeSwapRewardManager {
-    function initialize(IBlazeSwapManager manager) external;
+    function initialize(IBlazeSwapRewardsPlugin plugin) external;
 
     function changeProviders(address[] calldata providers) external;
 

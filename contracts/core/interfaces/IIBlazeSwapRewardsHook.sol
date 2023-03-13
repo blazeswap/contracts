@@ -2,8 +2,6 @@
 pragma solidity >=0.7.5;
 pragma abicoder v2;
 
-import './IIBlazeSwapPluginImpl.sol';
-
-interface IIBlazeSwapReward is IIBlazeSwapPluginImpl {
+interface IIBlazeSwapRewardsHook {
     function unclaimedRewards() external view returns (uint256);
 }

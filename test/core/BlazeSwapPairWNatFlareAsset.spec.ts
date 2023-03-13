@@ -56,6 +56,10 @@ describe('BlazeSwapPairWNatFlareAsset', () => {
   })
 
   it('facets', async () => {
+    const rewardsAddress = await IBlazeSwapPlugin__factory.connect(
+      await manager.rewardsPlugin(),
+      wallet
+    ).implementation()
     const delegationAddress = await IBlazeSwapPlugin__factory.connect(
       await manager.delegationPlugin(),
       wallet
@@ -69,8 +73,13 @@ describe('BlazeSwapPairWNatFlareAsset', () => {
       wallet
     ).implementation()
     // pair created without flareasset plugin
-    expect((await pair.facets()).length).to.eq(3)
-    expect(await pair.facetAddresses()).to.deep.eq([delegationAddress, ftsoRewardAddress, airdropAddress])
+    expect((await pair.facets()).length).to.eq(4)
+    expect(await pair.facetAddresses()).to.deep.eq([
+      rewardsAddress,
+      delegationAddress,
+      ftsoRewardAddress,
+      airdropAddress,
+    ])
   })
 
   it('type0 and type1', async () => {

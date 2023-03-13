@@ -11,11 +11,12 @@ import ERC20Test from '../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Te
 import {
   BlazeSwapRewardManager,
   BlazeSwapRewardManager__factory,
+  BlazeSwapRewardsPlugin,
+  BlazeSwapRewardsPlugin__factory,
   DistributionToDelegators,
   FlareContractRegistry,
   FtsoManager,
   FtsoRewardManager,
-  IBlazeSwapManager,
   IERC20,
   IWNat,
 } from '../../typechain-types'
@@ -28,32 +29,36 @@ describe('BlazeSwapRewardManager', () => {
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let registry: FlareContractRegistry
-  let manager: IBlazeSwapManager
   let ftsoManager: FtsoManager
   let ftsoRewardManager: FtsoRewardManager
   let distribution: DistributionToDelegators
   let wNat: IWNat
+  let rewardsPlugin: BlazeSwapRewardsPlugin
   let rewardManagerClonable: BlazeSwapRewardManager
   let rewardManager: BlazeSwapRewardManager
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
     registry = fixture.registry
-    manager = fixture.manager
     ftsoManager = fixture.ftsoManager
     ftsoRewardManager = fixture.ftsoRewardManager
     distribution = fixture.distribution
     wNat = fixture.wNat
-    rewardManagerClonable = BlazeSwapRewardManager__factory.connect(fixture.manager.rewardManager(), wallet)
+    rewardsPlugin = BlazeSwapRewardsPlugin__factory.connect(await fixture.manager.rewardsPlugin(), wallet)
+    rewardManagerClonable = BlazeSwapRewardManager__factory.connect(rewardsPlugin.rewardManager(), wallet)
     const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
     rewardManager = BlazeSwapRewardManager__factory.connect(rewardManagerAddress, wallet)
   })
 
   it('initialize:clonable', async () => {
-    await expect(rewardManagerClonable.initialize(manager.address)).to.be.revertedWith('DelegatedCalls: standard call')
+    await expect(rewardManagerClonable.initialize(rewardsPlugin.address)).to.be.revertedWith(
+      'DelegatedCalls: standard call'
+    )
   })
 
   it('initialize:twice', async () => {
-    await expect(rewardManager.initialize(manager.address)).to.be.revertedWith('BlazeSwapRewardManager: INITIALIZED')
+    await expect(rewardManager.initialize(rewardsPlugin.address)).to.be.revertedWith(
+      'BlazeSwapRewardManager: INITIALIZED'
+    )
   })
 
   it('changeProviders', async () => {
@@ -81,7 +86,7 @@ describe('BlazeSwapRewardManager', () => {
 
     await expect(rewardManager.claimFtsoRewards([1])).to.be.revertedWith('BlazeSwapRewardManager: FORBIDDEN')
 
-    await manager.addRewardsFeeClaimer(wallet.address)
+    await rewardsPlugin.addRewardsFeeClaimer(wallet.address)
 
     await expect(() => rewardManager.claimFtsoRewards([1])).to.changeTokenBalance(wNat, rewardManager, expectedRewards)
   })
@@ -92,7 +97,7 @@ describe('BlazeSwapRewardManager', () => {
 
     await expect(rewardManager.claimAirdrop(0)).to.be.revertedWith('BlazeSwapRewardManager: FORBIDDEN')
 
-    await manager.addRewardsFeeClaimer(wallet.address)
+    await rewardsPlugin.addRewardsFeeClaimer(wallet.address)
 
     await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, BigNumber.from('0'))
     await expect(rewardManager.claimAirdrop(0)).not.to.be.reverted
@@ -123,7 +128,7 @@ describe('BlazeSwapRewardManager', () => {
     await rewardManager.replaceWNatIfNeeded()
     expect(await wNat.balanceOf(rewardManager.address)).to.be.eq(wNatAmount)
 
-    await manager.setAllowWNatReplacement(true)
+    await rewardsPlugin.setAllowWNatReplacement(true)
 
     await expect(() => rewardManager.replaceWNatIfNeeded()).to.changeTokenBalance(newWNat, rewardManager, wNatAmount)
   })
@@ -139,7 +144,7 @@ describe('BlazeSwapRewardManager', () => {
       'BlazeSwapRewardManager: FORBIDDEN'
     )
 
-    await manager.addRewardsFeeClaimer(wallet.address)
+    await rewardsPlugin.addRewardsFeeClaimer(wallet.address)
 
     await expect(rewardManager.withdrawERC20(wNat.address, 5, wallet.address)).to.be.revertedWith(
       'BlazeSwapRewardManager: WNAT'
