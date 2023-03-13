@@ -69,17 +69,19 @@ contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpd
         }
     }
 
-    function claim(address payable _recipient, uint256 _month) external returns (uint256 _amountWei) {
+    function claim(address _rewardOwner, address _recipient, uint256 _month, bool _wrap) external returns(uint256 _rewardAmount) {
+        require(_rewardOwner == msg.sender, 'Executor unsupported');
+        require(!_wrap, 'Wrapping unsupported');
         for (uint256 i; i < airdrops[msg.sender].length; i++) {
             Airdrop storage a = airdrops[msg.sender][i];
             if (a.month == _month && a.month < getCurrentMonth && a.value > 0 && !a.claimed) {
-                _amountWei += a.value;
+                _rewardAmount += a.value;
                 a.claimed = true;
             }
         }
-        if (_amountWei > 0) {
-            require(address(this).balance >= _amountWei, 'Insufficient balance');
-            TransferHelper.safeTransferNAT(_recipient, _amountWei);
+        if (_rewardAmount > 0) {
+            require(address(this).balance >= _rewardAmount, 'Insufficient balance');
+            TransferHelper.safeTransferNAT(_recipient, _rewardAmount);
         }
     }
 

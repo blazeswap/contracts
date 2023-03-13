@@ -103,7 +103,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
     function claimAirdrop(uint256 month) external onlyDelegatedCall onlyRewardsFeeClaimer returns (uint256 amount) {
         IDistributionToDelegators distribution = FlareLibrary.getDistribution();
         if (address(distribution) != address(0)) {
-            amount = distribution.claim(payable(this), month);
+            amount = distribution.claim(address(this), payable(this), month, false);
         }
         wrapRewards();
     }

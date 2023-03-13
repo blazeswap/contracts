@@ -147,7 +147,7 @@ contract BlazeSwapAirdrop is IBlazeSwapAirdrop, IIBlazeSwapReward, ReentrancyLoc
             uint256 airdropFeeBips = BlazeSwapPairStorage.layout().manager.airdropFeeBips();
             uint256 totalAmount;
             for (uint256 month = monthsRange.start; month < endMonthExclusive; month++) {
-                uint256 monthAmount = distribution.claim(rewardManagerAddress, month);
+                uint256 monthAmount = distribution.claim(address(this), rewardManagerAddress, month, false);
                 if (monthAmount > 0) {
                     totalAmount += monthAmount;
                     uint256[] memory votePowerBlocks = new uint256[](NUMBER_OF_VOTE_POWER_BLOCKS);
