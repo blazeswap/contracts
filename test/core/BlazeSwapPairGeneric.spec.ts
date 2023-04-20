@@ -19,6 +19,8 @@ import {
   IBlazeSwapManager,
   IBlazeSwapMulticall__factory,
   IBlazeSwapPair,
+  IBlazeSwapPlugin__factory,
+  IBlazeSwapRewards__factory,
   IERC165__factory,
   IERC20,
   IERC20Metadata__factory,
@@ -35,14 +37,12 @@ describe('BlazeSwapPairGeneric', () => {
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let manager: IBlazeSwapManager
-  let factory: IBlazeSwapFactory
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
   beforeEach(async () => {
     const fixture = await loadFixture(pairFixture)
     manager = fixture.manager
-    factory = fixture.factory
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
@@ -185,7 +185,7 @@ describe('BlazeSwapPairGeneric', () => {
     await increaseTime(provider, 1) // not really needed by hardhat
     const tx = await pair.swap(expectedOutputAmount, 0, wallet.address, '0x')
     const receipt = await tx.wait()
-    expect(receipt.gasUsed).to.eq(75731)
+    expect(receipt.gasUsed).to.eq(75719)
   })
 
   it('burn', async () => {
@@ -371,6 +371,7 @@ describe('BlazeSwapPairGeneric', () => {
     expect(await pair.supportsInterface(getInterfaceID(IERC20Permit__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IERC20Snapshot__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapMulticall__factory.createInterface()))).to.eq(true)
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapRewards__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFlareAssetReward__factory.createInterface()))).to.eq(
@@ -379,13 +380,12 @@ describe('BlazeSwapPairGeneric', () => {
   })
 
   it('facets', async () => {
-    expect((await pair.facets()).length).to.eq(0)
-    expect(await pair.facetAddresses()).to.deep.eq([])
-  })
-
-  it('type0 and type1', async () => {
-    expect(await pair.type0()).to.eq(0)
-    expect(await pair.type1()).to.eq(0)
+    const rewardsAddress = await IBlazeSwapPlugin__factory.connect(
+      await manager.rewardsPlugin(),
+      wallet
+    ).implementation()
+    expect((await pair.facets()).length).to.eq(1)
+    expect(await pair.facetAddresses()).to.deep.eq([rewardsAddress])
   })
 
   it('delegate and changeProviders revert', async () => {

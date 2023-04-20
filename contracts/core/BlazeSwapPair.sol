@@ -19,8 +19,6 @@ library BlazeSwapPairStorage {
         IBlazeSwapManager manager; // duplicated for easy/local access by plugins
         address token0; // duplicated for easy/local access by plugins
         address token1; // duplicated for easy/local access by plugins
-        TokenType type0;
-        TokenType type1;
         mapping(bytes4 => bool) supportedInterfaces;
         mapping(bytes4 => address) pluginSelector;
         address[] pluginImpls;
@@ -52,51 +50,39 @@ contract BlazeSwapPair is IBlazeSwapPair, BlazeSwapBasePair, BlazeSwapERC20Snaps
         l.supportedInterfaces[type(IERC20Snapshot).interfaceId] = true;
         l.supportedInterfaces[type(IBlazeSwapMulticall).interfaceId] = true;
         l.supportedInterfaces[type(IBlazeSwapBasePair).interfaceId] = true;
-        l.supportedInterfaces[type(IBlazeSwapPair).interfaceId] = true;
     }
 
-    function initialize(
-        address _manager,
-        address _token0,
-        address _token1,
-        TokenType _type0,
-        TokenType _type1
-    ) external onlyParent {
-        initialize(_manager, _token0, _token1);
+    function initialize(address _manager, address _token0, address _token1) public override onlyParent {
+        super.initialize(_manager, _token0, _token1);
         BlazeSwapPairStorage.Layout storage l = BlazeSwapPairStorage.layout();
         l.manager = IBlazeSwapManager(_manager);
         l.token0 = _token0;
         l.token1 = _token1;
-        l.type0 = _type0;
-        l.type1 = _type1;
     }
 
-    function type0() external view returns (TokenType) {
-        return BlazeSwapPairStorage.layout().type0;
-    }
-
-    function type1() external view returns (TokenType) {
-        return BlazeSwapPairStorage.layout().type1;
-    }
-
-    function addPlugin(address plugin) external onlyParent {
-        // the factory enforces that first plugin is for delegation, while next ones are for rewards
-        address impl = IBlazeSwapPlugin(plugin).implementation();
+    function addPlugin(address _plugin) external {
+        require(msg.sender == manager, 'BlazeSwap: FORBIDDEN');
         BlazeSwapPairStorage.Layout storage l = BlazeSwapPairStorage.layout();
-        l.pluginImpls.push(impl);
-        (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) = IBlazeSwapPluginImpl(impl).pluginMetadata();
-        if (hooksSet & BlazeSwapPairStorage.TransferHook != 0) l.transferPluginImpls.push(impl);
-        if (hooksSet & BlazeSwapPairStorage.RewardsHook != 0) l.rewardsPluginImpls.push(impl);
-        for (uint256 i; i < selectors.length; i++) {
-            require(l.pluginSelector[selectors[i]] == address(0));
-            l.pluginSelector[selectors[i]] = impl;
+        IBlazeSwapPlugin plugin = IBlazeSwapPlugin(_plugin);
+        if (address(plugin) != address(0)) {
+            address impl = plugin.implementation();
+            (bytes4[] memory selectors, bytes4 interfaceId, uint256 hooksSet) = IBlazeSwapPluginImpl(impl)
+                .pluginMetadata();
+            if (l.supportedInterfaces[interfaceId]) return; // plugin already added
+            l.pluginImpls.push(impl);
+            if (hooksSet & BlazeSwapPairStorage.TransferHook != 0) l.transferPluginImpls.push(impl);
+            if (hooksSet & BlazeSwapPairStorage.RewardsHook != 0) l.rewardsPluginImpls.push(impl);
+            for (uint256 i; i < selectors.length; i++) {
+                require(l.pluginSelector[selectors[i]] == address(0));
+                l.pluginSelector[selectors[i]] = impl;
+            }
+            FacetCut[] memory fc = new FacetCut[](1);
+            fc[0] = FacetCut(impl, FacetCutAction.Add, selectors);
+            bytes memory functionData = abi.encodeWithSelector(IIBlazeSwapPluginImpl.initialize.selector, _plugin);
+            emit DiamondCut(fc, impl, functionData);
+            l.supportedInterfaces[interfaceId] = true;
+            DelegateCallHelper.delegateAndCheckResult(impl, functionData);
         }
-        FacetCut[] memory fc = new FacetCut[](1);
-        fc[0] = FacetCut(impl, FacetCutAction.Add, selectors);
-        bytes memory functionData = abi.encodeWithSelector(IIBlazeSwapPluginImpl.initialize.selector, plugin);
-        emit DiamondCut(fc, impl, functionData);
-        l.supportedInterfaces[interfaceId] = true;
-        DelegateCallHelper.delegateAndCheckResult(impl, functionData);
     }
 
     // prettier-ignore

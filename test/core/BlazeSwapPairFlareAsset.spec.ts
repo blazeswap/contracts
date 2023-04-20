@@ -15,7 +15,9 @@ import {
   IBlazeSwapManager,
   IBlazeSwapPair,
   IBlazeSwapPlugin__factory,
+  IBlazeSwapRewards__factory,
   IERC20,
+  IERC20Metadata,
   IWNat,
 } from '../../typechain-types'
 
@@ -28,7 +30,7 @@ describe('BlazeSwapPairFlareAsset', () => {
 
   let manager: IBlazeSwapManager
   let wNat: IWNat
-  let token0: IERC20
+  let token0: IERC20 & IERC20Metadata
   let token1: IERC20
   let flareAsset: FlareAsset
   let pair: IBlazeSwapPair
@@ -41,12 +43,13 @@ describe('BlazeSwapPairFlareAsset', () => {
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
-    flareAsset = ((await pair.type0()) == 2 ? token0 : token1) as FlareAsset
+    flareAsset = ((await token0.symbol()) == 'TFA' ? token0 : token1) as FlareAsset
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
     rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
 
   it('supportsInterface', async () => {
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapRewards__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(false)
@@ -67,10 +70,6 @@ describe('BlazeSwapPairFlareAsset', () => {
     // pair created without flareasset plugin
     expect((await pair.facets()).length).to.eq(2)
     expect(await pair.facetAddresses()).to.deep.eq([rewardsAddress, delegationAddress])
-  })
-
-  it('type0 and type1', async () => {
-    expect((await pair.type0()) + (await pair.type1())).to.eq(2)
   })
 
   it('initial state', async () => {

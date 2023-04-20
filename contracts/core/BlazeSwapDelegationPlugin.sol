@@ -8,6 +8,8 @@ import './BlazeSwapDelegation.sol';
 contract BlazeSwapDelegationPlugin is IBlazeSwapDelegationPlugin, CentrallyConfigurable {
     address public immutable implementation = address(new BlazeSwapDelegation());
 
+    bool public active = true;
+
     address public initialProvider;
 
     uint256 public maxDelegatesByPercent;

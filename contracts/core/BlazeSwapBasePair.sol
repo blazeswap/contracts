@@ -48,7 +48,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
     }
 
     // called once by the factory at time of deployment
-    function initialize(address _manager, address _token0, address _token1) public onlyParent {
+    function initialize(address _manager, address _token0, address _token1) public virtual onlyParent {
         mc = IBlazeSwapMath(IBlazeSwapBaseManager(_manager).mathContext());
         manager = _manager;
         token0 = _token0;

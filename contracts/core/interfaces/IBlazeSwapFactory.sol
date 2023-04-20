@@ -4,8 +4,4 @@ pragma abicoder v2;
 
 import './IBlazeSwapBaseFactory.sol';
 
-interface IBlazeSwapFactory is IBlazeSwapBaseFactory {
-    function isFlareAssetPairWithoutPlugin(address pair) external view returns (bool);
-
-    function upgradeFlareAssetPair(address pair) external;
-}
+interface IBlazeSwapFactory is IBlazeSwapBaseFactory {}

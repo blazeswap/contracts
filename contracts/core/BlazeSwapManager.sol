@@ -5,28 +5,43 @@ import './interfaces/flare/IFlareAssetRegistry.sol';
 import './interfaces/flare/IFtsoRewardManager.sol';
 import './interfaces/IBlazeSwapManager.sol';
 import './interfaces/IBlazeSwapPlugin.sol';
-import './interfaces/Enumerations.sol';
 import './libraries/FlareLibrary.sol';
 import './BlazeSwapBaseManager.sol';
 import './BlazeSwapExecutorManager.sol';
+import './BlazeSwapPair.sol';
 
 contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
+    bytes32 private constant TYPE_GENERIC = 0;
+    bytes32 private constant TYPE_WNAT = keccak256(bytes('wrapped native'));
+
+    address public factory;
+
     uint256 public ftsoRewardsFeeBips;
     uint256 public flareAssetRewardsFeeBips;
     uint256 public airdropFeeBips;
 
     address public immutable executorManager;
 
-    bool public allowFlareAssetPairsWithoutPlugin;
-
     address public rewardsPlugin;
     address public delegationPlugin;
     address public ftsoRewardPlugin;
-    address public flareAssetRewardPlugin;
     address public airdropPlugin;
+
+    mapping(bytes32 => Allow) public allowFlareAssetPairsWithoutPlugin;
+    mapping(bytes32 => address) public flareAssetRewardPlugin;
+    mapping(address => bool) public isFlareAssetPairWithoutPlugin;
+
+    function revertAlreadySet() internal pure {
+        revert('BlazeSwap: ALREADY_SET');
+    }
 
     constructor(address _configSetter) BlazeSwapBaseManager(_configSetter) {
         executorManager = address(new BlazeSwapExecutorManager());
+    }
+
+    function setFactory(address _factory) external onlyConfigSetter {
+        if (factory != address(0)) revertAlreadySet();
+        factory = _factory;
     }
 
     function setFtsoRewardsFeeBips(uint256 _bips) external onlyConfigSetter {
@@ -42,10 +57,6 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     function setAirdropFeeBips(uint256 _bips) external onlyConfigSetter {
         require(_bips <= 5_00, 'BlazeSwap: INVALID_FEE');
         airdropFeeBips = _bips;
-    }
-
-    function revertAlreadySet() internal pure {
-        revert('BlazeSwap: ALREADY_SET');
     }
 
     function setRewardsPlugin(address _rewardsPlugin) external onlyConfigSetter {
@@ -76,36 +87,72 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
         airdropPlugin = _airdropPlugin;
     }
 
-    function isFlareAsset(address token) private view returns (bool) {
+    function getAssetType(address token) private view returns (bytes32 assetType) {
         IFlareAssetRegistry registry = FlareLibrary.getFlareAssetRegistry();
-        return address(registry) != address(0) && registry.isFlareAsset(token);
+        if (address(registry) != address(0)) assetType = registry.assetType(token);
     }
 
     function isWNat(address token) private view returns (bool) {
         return token == address(FlareLibrary.getWNat());
     }
 
-    function getTokenType(address token) external view returns (TokenType tokenType) {
-        if (isWNat(token)) tokenType = TokenType.WNat;
-        else if (isFlareAsset(token)) tokenType = TokenType.FlareAsset;
-        else tokenType = TokenType.Generic;
+    function getTokenType(address token) public view returns (bytes32) {
+        return isWNat(token) ? TYPE_WNAT : getAssetType(token);
     }
 
-    function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external onlyConfigSetter {
-        allowFlareAssetPairsWithoutPlugin = _allowFlareAssetPairsWithoutPlugin;
+    function setAllowFlareAssetPairsWithoutPlugin(
+        bytes32 _assetType,
+        Allow _allowFlareAssetPairsWithoutPlugin
+    ) external onlyConfigSetter {
+        if (flareAssetRewardPlugin[_assetType] != address(0)) revertAlreadySet();
+        allowFlareAssetPairsWithoutPlugin[_assetType] = _allowFlareAssetPairsWithoutPlugin;
     }
 
-    function setFlareAssetRewardPlugin(address _flareAssetRewardPlugin) external onlyConfigSetter {
-        if (flareAssetRewardPlugin != address(0)) revertAlreadySet();
+    function setFlareAssetRewardPlugin(bytes32 _assetType, address _flareAssetRewardPlugin) external onlyConfigSetter {
+        if (flareAssetRewardPlugin[_assetType] != address(0)) revertAlreadySet();
         address impl = IBlazeSwapPlugin(_flareAssetRewardPlugin).implementation();
         require(impl != address(0), 'BlazeSwap: INVALID_PLUGIN');
-        flareAssetRewardPlugin = _flareAssetRewardPlugin;
-        allowFlareAssetPairsWithoutPlugin = false;
+        flareAssetRewardPlugin[_assetType] = _flareAssetRewardPlugin;
+        allowFlareAssetPairsWithoutPlugin[_assetType] = Allow.No;
     }
 
-    function flareAssetSupport() external view returns (FlareAssetSupport) {
-        if (address(FlareLibrary.getFlareAssetRegistry()) == address(0)) return FlareAssetSupport.None;
-        if (flareAssetRewardPlugin != address(0)) return FlareAssetSupport.Full;
-        return allowFlareAssetPairsWithoutPlugin ? FlareAssetSupport.Minimal : FlareAssetSupport.None;
+    function setPluginsForPair(address pair, address tokenA, address tokenB) external {
+        require(msg.sender == factory, 'BlazeSwap: FORBIDDEN');
+        bytes32 typeA = getTokenType(tokenA);
+        bytes32 typeB = getTokenType(tokenB);
+        BlazeSwapPair p = BlazeSwapPair(pair);
+        p.addPlugin(rewardsPlugin);
+        if (typeA != TYPE_GENERIC || typeB != TYPE_GENERIC) {
+            p.addPlugin(delegationPlugin);
+            if (typeA == TYPE_WNAT || typeB == TYPE_WNAT) {
+                p.addPlugin(ftsoRewardPlugin);
+                if ((block.chainid == 14 || block.chainid == 114) && IBlazeSwapPlugin(airdropPlugin).active()) {
+                    p.addPlugin(airdropPlugin);
+                }
+            }
+            if (typeA != TYPE_GENERIC && typeA != TYPE_WNAT) addFlareAssetPlugin(p, typeA, false);
+            if (typeB != TYPE_GENERIC && typeB != TYPE_WNAT) addFlareAssetPlugin(p, typeB, false);
+        }
+    }
+
+    function addFlareAssetPlugin(BlazeSwapPair p, bytes32 assetType, bool update) private {
+        address plugin = flareAssetRewardPlugin[assetType];
+        if (plugin != address(0)) {
+            if (IBlazeSwapPlugin(airdropPlugin).active()) p.addPlugin(plugin);
+        } else if (allowFlareAssetPairsWithoutPlugin[assetType] == Allow.YesUpgradable) {
+            isFlareAssetPairWithoutPlugin[address(p)] = true;
+        } else if (allowFlareAssetPairsWithoutPlugin[assetType] == Allow.No && !update) {
+            revert('BlazeSwap: FASSET_UNSUPPORTED');
+        }
+    }
+
+    function upgradeFlareAssetPair(address pair) external {
+        require(isFlareAssetPairWithoutPlugin[pair], 'BlazeSwap: UPGRADE_NOT_NEEDED');
+        isFlareAssetPairWithoutPlugin[pair] = false;
+        BlazeSwapPair p = BlazeSwapPair(pair);
+        bytes32 typeA = getTokenType(p.token0());
+        bytes32 typeB = getTokenType(p.token1());
+        if (typeA != TYPE_GENERIC && typeA != TYPE_WNAT) addFlareAssetPlugin(p, typeA, true);
+        if (typeB != TYPE_GENERIC && typeB != TYPE_WNAT) addFlareAssetPlugin(p, typeB, true);
     }
 }

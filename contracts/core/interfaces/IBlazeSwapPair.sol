@@ -8,7 +8,6 @@ import './erc20/IERC20Snapshot.sol';
 import './erc165/IERC165.sol';
 import './IBlazeSwapBasePair.sol';
 import './IBlazeSwapMulticall.sol';
-import './Enumerations.sol';
 
 interface IBlazeSwapPair is
     IBlazeSwapBasePair,
@@ -17,8 +16,4 @@ interface IBlazeSwapPair is
     IERC165,
     IDiamondLoupe,
     IDiamondCut
-{
-    function type0() external view returns (TokenType);
-
-    function type1() external view returns (TokenType);
-}
+{}

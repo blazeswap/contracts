@@ -1,12 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
+import { BigNumber, constants } from 'ethers'
 
 import { pairWNatFixture } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress } from './shared/utilities'
 
 import WNAT from '../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
 import ERC20Test from '../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
+import FtsoRewardManagerABI from '../../artifacts/contracts/core/test/FtsoRewardManager.sol/FtsoRewardManager.json'
 
 import {
   BlazeSwapRewardManager,
@@ -91,6 +92,62 @@ describe('BlazeSwapRewardManager', () => {
     await expect(() => rewardManager.claimFtsoRewards([1])).to.changeTokenBalance(wNat, rewardManager, expectedRewards)
   })
 
+  async function replaceFtsoRewardManager(ftsoManager: FtsoManager) {
+    const oldManager = await ftsoManager.rewardManager()
+    const newManager = (await deployContract(wallet, FtsoRewardManagerABI, [oldManager])) as FtsoRewardManager
+    await registry.setContractAddress('FtsoRewardManager', newManager.address, [ftsoManager.address])
+    return newManager
+  }
+
+  async function initializeFtsoRewardManager(ftsoManager: FtsoManager, ftsoRewardManager: FtsoRewardManager) {
+    await registry.setContractAddress('WNat', registry.getContractAddressByName('WNat'), [ftsoRewardManager.address])
+    await registry.setContractAddress('FtsoManager', ftsoManager.address, [ftsoRewardManager.address])
+    await registry.setContractAddress('FtsoRewardManager', ftsoRewardManager.address, [ftsoManager.address])
+    await ftsoRewardManager.initialize()
+    await ftsoRewardManager.activate()
+  }
+
+  it('claimFtsoRewards:multiple', async () => {
+    const wNatAmount = expandTo18Decimals(10)
+    await wNat.transfer(rewardManager.address, wNatAmount)
+
+    let curFtsoRewardManager = ftsoRewardManager
+
+    // 1st epoch of 1st RM
+    await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 1, 10, { value: wNatAmount })
+    // 2nd epoch of deactivated 2nd RM
+    await ftsoManager.startRewardEpoch(2, (await provider.getBlock('latest')).number)
+    curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
+    await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 2, 20, { value: wNatAmount })
+    await curFtsoRewardManager.deactivate()
+    // 3rd epoch splitted between 3rd, 4th (deactivated), 5th RMs
+    await ftsoManager.startRewardEpoch(3, (await provider.getBlock('latest')).number)
+    curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
+    await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 3, 15, { value: wNatAmount })
+    curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
+    await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 3, 15, { value: wNatAmount })
+    await curFtsoRewardManager.deactivate()
+    curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
+    await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 3, 15, { value: wNatAmount })
+    // 4th epoch on 5th RM, 6th RM not activated yet
+    await ftsoManager.startRewardEpoch(4, (await provider.getBlock('latest')).number)
+    await curFtsoRewardManager.addRewards(rewardManager.address, 4, 40, { value: wNatAmount })
+    curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
+    // start epoch 6
+    await ftsoManager.startRewardEpoch(5, (await provider.getBlock('latest')).number)
+
+    const expectedRewards = expandTo18Decimals(10).div(1000).mul(8) // 0.08
+
+    await rewardsPlugin.addRewardsFeeClaimer(wallet.address)
+
+    await expect(() => rewardManager.claimFtsoRewards([4])).to.changeTokenBalance(wNat, rewardManager, expectedRewards)
+  })
+
   it('claimAirdrop', async () => {
     await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
     await distribution.addAirdrop(rewardManager.address, 0, 100, { value: 100 })
@@ -98,6 +155,8 @@ describe('BlazeSwapRewardManager', () => {
     await expect(rewardManager.claimAirdrop(0)).to.be.revertedWith('BlazeSwapRewardManager: FORBIDDEN')
 
     await rewardsPlugin.addRewardsFeeClaimer(wallet.address)
+
+    await registry.setContractAddress('DistributionToDelegators', constants.AddressZero, [])
 
     await expect(() => rewardManager.claimAirdrop(0)).to.changeTokenBalance(wNat, rewardManager, BigNumber.from('0'))
     await expect(rewardManager.claimAirdrop(0)).not.to.be.reverted
@@ -140,7 +199,7 @@ describe('BlazeSwapRewardManager', () => {
     const erc20 = (await deployContract(wallet, ERC20Test, [1000])) as IERC20
     await erc20.transfer(rewardManager.address, 500)
 
-    await expect(rewardManager.withdrawERC20(wNat.address, 5, wallet.address)).to.be.revertedWith(
+    await expect(rewardManager.withdrawERC20(wNat.address, 0, wallet.address)).to.be.revertedWith(
       'BlazeSwapRewardManager: FORBIDDEN'
     )
 
@@ -154,6 +213,18 @@ describe('BlazeSwapRewardManager', () => {
       erc20,
       wallet,
       500
+    )
+  })
+
+  it('withdrawERC721', async () => {
+    await expect(rewardManager.withdrawERC721(wallet.address, 0, wallet.address)).to.be.revertedWith(
+      'BlazeSwapRewardManager: FORBIDDEN'
+    )
+  })
+
+  it('withdrawERC1155', async () => {
+    await expect(rewardManager.withdrawERC1155(wallet.address, 0, 0, wallet.address)).to.be.revertedWith(
+      'BlazeSwapRewardManager: FORBIDDEN'
     )
   })
 })

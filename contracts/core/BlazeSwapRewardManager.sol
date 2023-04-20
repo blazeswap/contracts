@@ -33,6 +33,15 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         _;
     }
 
+    function checkUnmanagedToken(address token) private view {
+        require(token != address(wNat), 'BlazeSwapRewardManager: WNAT');
+    }
+
+    modifier onlyUnmanagedToken(address token) {
+        checkUnmanagedToken(token);
+        _;
+    }
+
     function initialize(IBlazeSwapRewardsPlugin _rewardsPlugin) external onlyDelegatedCall {
         require(!initialized, 'BlazeSwapRewardManager: INITIALIZED');
         initParentRelation(msg.sender);
@@ -131,8 +140,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         address token,
         uint256 amount,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
-        require(token != address(wNat), 'BlazeSwapRewardManager: WNAT');
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC20(token).transfer(destination, amount);
     }
 
@@ -140,7 +148,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         address token,
         uint256 id,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC721(token).transferFrom(address(this), destination, id);
     }
 
@@ -149,7 +157,7 @@ contract BlazeSwapRewardManager is IIBlazeSwapRewardManager, DelegatedCalls, Par
         uint256 id,
         uint256 amount,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC1155(token).safeTransferFrom(address(this), destination, id, amount, '');
     }
 }

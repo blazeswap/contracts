@@ -56,10 +56,7 @@ contract BlazeSwapAirdrop is
     function initialize(address) external onlyDelegatedCall {
         BlazeSwapAirdropStorage.Layout storage l = BlazeSwapAirdropStorage.layout();
         l.executorManager = IBlazeSwapExecutorManager(BlazeSwapPairStorage.layout().manager.executorManager());
-        IDistributionToDelegators distribution = FlareLibrary.getDistribution();
-        if (address(distribution) != address(0)) {
-            l.nextMonthToDistribute = distribution.getCurrentMonth();
-        }
+        l.nextMonthToDistribute = FlareLibrary.getDistribution().getCurrentMonth();
     }
 
     function applyFee(uint256 amount, uint256 bips) private pure returns (uint256) {

@@ -15,6 +15,7 @@ import {
   IBlazeSwapManager,
   IBlazeSwapPair,
   IBlazeSwapPlugin__factory,
+  IBlazeSwapRewards__factory,
   IERC20,
   IWNat,
 } from '../../typechain-types'
@@ -49,6 +50,7 @@ describe('BlazeSwapPairFlareAssets', () => {
   })
 
   it('supportsInterface', async () => {
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapRewards__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(false)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(false)
@@ -69,10 +71,6 @@ describe('BlazeSwapPairFlareAssets', () => {
     // pair created without flareasset plugin
     expect((await pair.facets()).length).to.eq(2)
     expect(await pair.facetAddresses()).to.deep.eq([rewardsAddress, delegationAddress])
-  })
-
-  it('type0 and type1', async () => {
-    expect((await pair.type0()) + (await pair.type1())).to.eq(4)
   })
 
   it('initial state', async () => {

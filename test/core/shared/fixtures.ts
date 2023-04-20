@@ -1,5 +1,6 @@
 import { waffle } from 'hardhat'
 import { BigNumber, Wallet, providers, constants } from 'ethers'
+import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
 
 import { expandTo18Decimals } from './utilities'
 
@@ -36,11 +37,17 @@ import {
   FlareAssetRegistry,
   FlareContractRegistry,
   FlareContractRegistry__factory,
+  IERC20Metadata,
 } from '../../../typechain-types'
 
 const { deployContract } = waffle
 
 const FLARE_CONTRACT_REGISTRY = '0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019'
+
+export const ASSET_TYPE_GENERIC = constants.HashZero
+export const ASSET_TYPE_WNAT = keccak256(toUtf8Bytes('wrapped native'))
+export const ASSET_TYPE_FASSET = keccak256(toUtf8Bytes('f-asset'))
+export const ASSET_TYPE_LAYERCAKE = keccak256(toUtf8Bytes('layer cake')) // fake
 
 export const TEST_ADDRESS = [
   '0x0000000000000000000000000000000000000001',
@@ -81,10 +88,8 @@ export async function flareFixture([wallet]: Wallet[], provider: providers.Web3P
   await registry.setContractAddress('WNat', wNat.address, updatableContracts)
   await registry.setContractAddress('FtsoManager', ftsoManager.address, updatableContracts)
   await registry.setContractAddress('FtsoRewardManager', ftsoRewardManager.address, updatableContracts)
-  // DistributionToDelegators and FlareAssetRegistry are not added to FlareContractRegistry initially
-  // this is needed to cleanup contract storage due to fixed/static address
-  await registry.setContractAddress('DistributionToDelegators', constants.AddressZero, [])
-  await registry.setContractAddress('FlareAssetRegistry', constants.AddressZero, [])
+  await registry.setContractAddress('DistributionToDelegators', distribution.address, [])
+  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
 
   await ftsoManager.initialize()
   await ftsoRewardManager.initialize()
@@ -155,6 +160,7 @@ export async function factoryFixture([wallet]: Wallet[], provider: providers.Web
     await managerFixture([wallet], provider)
 
   const factory = (await deployContract(wallet, BlazeSwapFactory, [manager.address])) as IBlazeSwapFactory
+  await manager.setFactory(factory.address)
   return {
     registry,
     wNat,
@@ -168,22 +174,22 @@ export async function factoryFixture([wallet]: Wallet[], provider: providers.Web
 }
 
 interface BasePairFixture extends BaseFactoryFixture {
-  token0: IERC20
-  token1: IERC20
+  token0: IERC20 & IERC20Metadata
+  token1: IERC20 & IERC20Metadata
   pair: IBlazeSwapBasePair
 }
 
 interface PairFixture extends FactoryFixture {
-  token0: IERC20
-  token1: IERC20
+  token0: IERC20 & IERC20Metadata
+  token1: IERC20 & IERC20Metadata
   pair: IBlazeSwapPair
 }
 
 export async function basePairFixture([wallet]: Wallet[], provider: providers.Web3Provider): Promise<BasePairFixture> {
   const { manager, factory } = await baseFactoryFixture([wallet], provider)
 
-  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
+  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  const tokenB = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
 
   await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factory.getPair(tokenA.address, tokenB.address)
@@ -200,8 +206,8 @@ export async function pairFixture([wallet]: Wallet[], provider: providers.Web3Pr
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
+  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  const tokenB = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
 
   await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factory.getPair(tokenA.address, tokenB.address)
@@ -233,8 +239,8 @@ export async function pairWNatFixture([wallet]: Wallet[], provider: providers.We
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
-  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = wNat as IERC20
+  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  const tokenB = wNat as IERC20 & IERC20Metadata
   // provide WNAT supply
   await wNat.deposit({ value: expandTo18Decimals(10000) })
 
@@ -268,15 +274,14 @@ export async function pairFlareAssetFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
-  await manager.setAllowFlareAssetPairsWithoutPlugin(true)
+  await manager.setAllowFlareAssetPairsWithoutPlugin(ASSET_TYPE_FASSET, 1) // YesUpgradable
 
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
-  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20
-  await flareAssetRegistry.addFlareAsset(tokenB.address, 1)
+  const tokenA = (await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  const tokenB = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  await flareAssetRegistry.addFlareAsset(tokenB.address, 'f-asset', 1)
 
   await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factory.getPair(tokenA.address, tokenB.address)
@@ -308,15 +313,14 @@ export async function pairWNatFlareAssetFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
-  await manager.setAllowFlareAssetPairsWithoutPlugin(true)
+  await manager.setAllowFlareAssetPairsWithoutPlugin(ASSET_TYPE_FASSET, 1) // YesUpgradable
 
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
-  const tokenA = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20
-  await flareAssetRegistry.addFlareAsset(tokenA.address, 3)
-  const tokenB = wNat as IERC20
+  const tokenA = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  await flareAssetRegistry.addFlareAsset(tokenA.address, 'f-asset', 3)
+  const tokenB = wNat as IERC20 & IERC20Metadata
   // provide WNAT supply
   await wNat.deposit({ value: expandTo18Decimals(10000) })
 
@@ -350,17 +354,16 @@ export async function pairFlareAssetsFixture(
   const { registry, wNat, ftsoManager, ftsoRewardManager, distribution, flareAssetRegistry, manager, factory } =
     await factoryFixture([wallet], provider)
 
-  await registry.setContractAddress('FlareAssetRegistry', flareAssetRegistry.address, [])
-  await manager.setAllowFlareAssetPairsWithoutPlugin(true)
+  await manager.setAllowFlareAssetPairsWithoutPlugin(ASSET_TYPE_FASSET, 1) // YesUpgradable
 
   // provide FtsoRewardManager supply
   await wallet.sendTransaction({ to: ftsoRewardManager.address, value: expandTo18Decimals(1000000) })
 
-  const tokenA = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20
-  const tokenB = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20
+  const tokenA = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
+  const tokenB = (await deployContract(wallet, FlareAssetTest, [expandTo18Decimals(10000)])) as IERC20 & IERC20Metadata
   const isAB = BigNumber.from(tokenA.address).lt(BigNumber.from(tokenB.address))
-  await flareAssetRegistry.addFlareAsset(tokenA.address, isAB ? 2 : 0)
-  await flareAssetRegistry.addFlareAsset(tokenB.address, isAB ? 0 : 2)
+  await flareAssetRegistry.addFlareAsset(tokenA.address, 'f-asset', isAB ? 2 : 0)
+  await flareAssetRegistry.addFlareAsset(tokenB.address, 'f-asset', isAB ? 0 : 2)
 
   await factory.createPair(tokenA.address, tokenB.address)
   const pairAddress = await factory.getPair(tokenA.address, tokenB.address)

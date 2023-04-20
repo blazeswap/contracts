@@ -14,6 +14,8 @@ contract BlazeSwapRewardsPlugin is IBlazeSwapRewardsPlugin, CentrallyConfigurabl
 
     address public immutable rewardManager = address(new BlazeSwapRewardManager());
 
+    bool public active = true;
+
     AddressSet.State private rewardsFeeClaimer;
 
     address public rewardsFeeTo;

@@ -12,7 +12,6 @@ import { Coder } from 'abi-coder'
 
 import {
   BlazeSwapDelegationPlugin__factory,
-  FlareContractRegistry,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
   IBlazeSwapManager,
@@ -23,14 +22,13 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+const { createFixtureLoader } = waffle
 
 describe('BlazeSwapDelegation', () => {
   const provider = waffle.provider
   const [wallet, other1, other2] = provider.getWallets()
   const loadFixture = createFixtureLoader([wallet], provider)
 
-  let registry: FlareContractRegistry
   let manager: IBlazeSwapManager
   let wNat: IWNat
   let token0: IERC20
@@ -40,7 +38,6 @@ describe('BlazeSwapDelegation', () => {
   let rewardManagerAddress: string
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
-    registry = fixture.registry
     manager = fixture.manager
     wNat = fixture.wNat
     token0 = fixture.token0

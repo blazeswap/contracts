@@ -4,9 +4,18 @@ pragma abicoder v2;
 
 import './flare/IFlareContractRegistry.sol';
 import './IBlazeSwapBaseManager.sol';
-import './Enumerations.sol';
 
 interface IBlazeSwapManager is IBlazeSwapBaseManager {
+    enum Allow {
+        No,
+        YesUpgradable,
+        YesNoPluginNeeded
+    }
+
+    function setFactory(address _factory) external;
+
+    function factory() external view returns (address);
+
     function setFtsoRewardsFeeBips(uint256 _bips) external;
 
     function ftsoRewardsFeeBips() external view returns (uint256);
@@ -21,7 +30,7 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function executorManager() external view returns (address);
 
-    function getTokenType(address token) external view returns (TokenType tokenType);
+    function getTokenType(address token) external view returns (bytes32);
 
     function rewardsPlugin() external view returns (address);
 
@@ -31,11 +40,14 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function airdropPlugin() external view returns (address);
 
-    function flareAssetRewardPlugin() external view returns (address);
+    function flareAssetRewardPlugin(bytes32 _assetType) external view returns (address);
 
-    function setAllowFlareAssetPairsWithoutPlugin(bool _allowFlareAssetPairsWithoutPlugin) external;
+    function setAllowFlareAssetPairsWithoutPlugin(
+        bytes32 _assetType,
+        Allow _allowFlareAssetPairsWithoutPlugin
+    ) external;
 
-    function allowFlareAssetPairsWithoutPlugin() external view returns (bool);
+    function allowFlareAssetPairsWithoutPlugin(bytes32 _assetType) external view returns (Allow);
 
     function setRewardsPlugin(address _rewardsPlugin) external;
 
@@ -45,7 +57,11 @@ interface IBlazeSwapManager is IBlazeSwapBaseManager {
 
     function setAirdropPlugin(address _airdropPlugin) external;
 
-    function setFlareAssetRewardPlugin(address _flareAssetRewardPlugin) external;
+    function setFlareAssetRewardPlugin(bytes32 _assetType, address _flareAssetRewardPlugin) external;
 
-    function flareAssetSupport() external view returns (FlareAssetSupport);
+    function setPluginsForPair(address pair, address tokenA, address tokenB) external;
+
+    function isFlareAssetPairWithoutPlugin(address pair) external view returns (bool);
+
+    function upgradeFlareAssetPair(address pair) external;
 }

@@ -268,15 +268,15 @@ contract BlazeSwapDelegation is
     }
 
     function internalChangeProviders(
+        address wNat,
         IFlareAssetRegistry registry,
         address[] memory newProviders,
-        TokenType tokenType,
         address token
     ) private {
         uint256 maxDelegates;
-        if (tokenType == TokenType.WNat) {
+        if (token == wNat) {
             maxDelegates = type(uint256).max; // length already validated in checkMostVotedProviders
-        } else if (tokenType == TokenType.FlareAsset && registry.supportsFtsoDelegation(token)) {
+        } else if (address(registry) != address(0) && registry.isFlareAsset(token)) {
             maxDelegates = registry.maxDelegatesByPercent(token);
         }
         if (maxDelegates > 0) {
@@ -286,9 +286,10 @@ contract BlazeSwapDelegation is
 
     function safeChangeProviders(address[] memory newProviders) private {
         BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
+        address wNat = address(FlareLibrary.getWNat());
         IFlareAssetRegistry registry = FlareLibrary.getFlareAssetRegistry();
-        internalChangeProviders(registry, newProviders, pl.type0, pl.token0);
-        internalChangeProviders(registry, newProviders, pl.type1, pl.token1);
+        internalChangeProviders(wNat, registry, newProviders, pl.token0);
+        internalChangeProviders(wNat, registry, newProviders, pl.token1);
         BlazeSwapRewardsStorage.layout().rewardManager.changeProviders(newProviders);
     }
 

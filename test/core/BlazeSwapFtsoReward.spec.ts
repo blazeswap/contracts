@@ -295,6 +295,55 @@ describe('BlazeSwapFtsoReward', () => {
     expect(amounts).to.deep.eq([expectedWalletRewards1, expectedWalletRewards2])
   })
 
+  it('distributeFtsoRewards:multiple', async () => {
+    let curFtsoRewardManager = ftsoRewardManager
+    const amount = expandTo18Decimals(10)
+
+    await addLiquidity(wallet, amount, amount)
+
+    // 1st epoch of 1st RM
+    await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await curFtsoRewardManager.addRewards(pair.address, 1, 10, { value: amount })
+    // 2nd epoch of deactivated 2nd RM
+    await ftsoManager.startRewardEpoch(2, (await provider.getBlock('latest')).number)
+    curFtsoRewardManager = await replaceFtsoRewardManager()
+    await curFtsoRewardManager.addRewards(pair.address, 2, 20, { value: amount })
+    await curFtsoRewardManager.deactivate()
+    // 3rd epoch splitted between 3rd, 4th (deactivated), 5th RMs
+    await ftsoManager.startRewardEpoch(3, (await provider.getBlock('latest')).number)
+    curFtsoRewardManager = await replaceFtsoRewardManager()
+    await curFtsoRewardManager.addRewards(pair.address, 3, 15, { value: amount })
+    curFtsoRewardManager = await replaceFtsoRewardManager()
+    await curFtsoRewardManager.addRewards(pair.address, 3, 15, { value: amount })
+    await curFtsoRewardManager.deactivate()
+    curFtsoRewardManager = await replaceFtsoRewardManager()
+    await curFtsoRewardManager.addRewards(pair.address, 3, 15, { value: amount })
+    // 4th epoch on 5th RM, 6th RM not used yet
+    await ftsoManager.startRewardEpoch(4, (await provider.getBlock('latest')).number)
+    await curFtsoRewardManager.addRewards(pair.address, 4, 40, { value: amount })
+    curFtsoRewardManager = await replaceFtsoRewardManager()
+    // start epoch 6
+    await ftsoManager.startRewardEpoch(5, (await provider.getBlock('latest')).number)
+
+    const expectedRewards1 = expandTo18Decimals(10).div(1000)
+    const expectedRewards3 = expandTo18Decimals(10).div(1000).mul(3)
+    const expectedRewards4 = expandTo18Decimals(10).div(1000).mul(4)
+
+    const rewardManagerAddress = getRewardManagerAddress(pair.address)
+
+    await expect(ftsoReward.distributeFtsoRewards([4]))
+      .to.emit(ftsoReward, 'FtsoRewardsDistributed')
+      .withArgs(BigNumber.from('1'), expectedRewards1, wallet.address)
+      .to.emit(ftsoReward, 'FtsoRewardsDistributed')
+      .withArgs(BigNumber.from('3'), expectedRewards3, wallet.address)
+      .to.emit(ftsoReward, 'FtsoRewardsDistributed')
+      .withArgs(BigNumber.from('4'), expectedRewards4, wallet.address)
+
+    expect(await wNat.balanceOf(rewardManagerAddress)).to.eq(
+      expectedRewards1.add(expectedRewards3).add(expectedRewards4)
+    )
+  })
+
   it('epochsWithUnclaimedFtsoRewards', async () => {
     await addLiquidity(wallet, expandTo18Decimals(2), expandTo18Decimals(8))
     await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)

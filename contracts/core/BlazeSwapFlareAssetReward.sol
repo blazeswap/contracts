@@ -53,10 +53,11 @@ contract BlazeSwapFlareAssetReward is
 
         BlazeSwapPairStorage.Layout storage s = BlazeSwapPairStorage.layout();
         BlazeSwapFlareAssetRewardStorage.Layout storage l = BlazeSwapFlareAssetRewardStorage.layout();
-        if (s.type0 == TokenType.FlareAsset) {
+        IFlareAssetRegistry flareAssetRegistry = FlareLibrary.getFlareAssetRegistry();
+        if (flareAssetRegistry.isFlareAsset(s.token0)) {
             l.flareAsset.push(s.token0);
         }
-        if (s.type1 == TokenType.FlareAsset) {
+        if (flareAssetRegistry.isFlareAsset(s.token1)) {
             l.flareAsset.push(s.token1);
         }
         l.testValue1 = plugin.testValue1() * 2;

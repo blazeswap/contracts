@@ -25,8 +25,8 @@ contract DistributionToDelegators is IDistributionToDelegators, IFlareAddressUpd
     receive() external payable {}
 
     function getClaimableMonths() external view returns (uint256 _startMonth, uint256 _endMonth) {
-        require(getCurrentMonth > 0, 'Distribution not started');
-        require(getMonthToExpireNext < 36, 'Distribution concluded');
+        require(getCurrentMonth > 0, 'no month claimable');
+        require(getMonthToExpireNext < 36, 'already finished');
         _startMonth = getMonthToExpireNext;
         _endMonth = (getCurrentMonth <= 36) ? getCurrentMonth - 1 : 35;
     }

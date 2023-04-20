@@ -38,6 +38,16 @@ contract BlazeSwapRewards is IBlazeSwapRewards, IBlazeSwapPluginImpl, DelegatedC
         _;
     }
 
+    function checkUnmanagedToken(address token) private view {
+        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
+        require(token != pl.token0 && token != pl.token1 && token != address(this), 'BlazeSwap: TOKEN');
+    }
+
+    modifier onlyUnmanagedToken(address token) {
+        checkUnmanagedToken(token);
+        _;
+    }
+
     function initialize(address _plugin) external onlyDelegatedCall {
         BlazeSwapRewardsStorage.Layout storage l = BlazeSwapRewardsStorage.layout();
         l.rewardsPlugin = IBlazeSwapRewardsPlugin(_plugin);
@@ -72,9 +82,7 @@ contract BlazeSwapRewards is IBlazeSwapRewards, IBlazeSwapPluginImpl, DelegatedC
         address token,
         uint256 amount,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
-        BlazeSwapPairStorage.Layout storage pl = BlazeSwapPairStorage.layout();
-        require(token != pl.token0 && token != pl.token1, 'BlazeSwap: TOKEN');
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC20(token).transfer(destination, amount);
     }
 
@@ -82,7 +90,7 @@ contract BlazeSwapRewards is IBlazeSwapRewards, IBlazeSwapPluginImpl, DelegatedC
         address token,
         uint256 id,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC721(token).transferFrom(address(this), destination, id);
     }
 
@@ -91,7 +99,7 @@ contract BlazeSwapRewards is IBlazeSwapRewards, IBlazeSwapPluginImpl, DelegatedC
         uint256 id,
         uint256 amount,
         address destination
-    ) external onlyDelegatedCall onlyRewardsFeeClaimer {
+    ) external onlyDelegatedCall onlyRewardsFeeClaimer onlyUnmanagedToken(token) {
         IERC1155(token).safeTransferFrom(address(this), destination, id, amount, '');
     }
 

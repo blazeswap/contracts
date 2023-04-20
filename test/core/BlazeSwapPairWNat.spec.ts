@@ -2,24 +2,30 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 
+import ERC20Test from '../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
+
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
 
 import {
+  DistributionToDelegators,
   IBlazeSwapAirdrop__factory,
   IBlazeSwapDelegation,
   IBlazeSwapDelegation__factory,
+  IBlazeSwapFactory,
   IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
   IBlazeSwapPair,
+  IBlazeSwapPair__factory,
   IBlazeSwapPluginImpl__factory,
   IBlazeSwapPlugin__factory,
+  IBlazeSwapRewards__factory,
   IERC20,
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
+const { createFixtureLoader, deployContract } = waffle
 
 describe('BlazeSwapPairWNat', () => {
   const provider = waffle.provider
@@ -27,30 +33,51 @@ describe('BlazeSwapPairWNat', () => {
   const loadFixture = createFixtureLoader([wallet], provider)
 
   let manager: IBlazeSwapManager
+  let factory: IBlazeSwapFactory
   let wNat: IWNat
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
   let delegation: IBlazeSwapDelegation
+  let distribution: DistributionToDelegators
   let rewardManagerAddress: string
   beforeEach(async () => {
     const fixture = await loadFixture(pairWNatFixture)
     manager = fixture.manager
+    factory = fixture.factory
     wNat = fixture.wNat
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
     delegation = IBlazeSwapDelegation__factory.connect(pair.address, wallet)
+    distribution = fixture.distribution
     rewardManagerAddress = getRewardManagerAddress(pair.address)
   })
 
   it('supportsInterface', async () => {
+    expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapRewards__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(true)
     expect(await pair.supportsInterface(getInterfaceID(IBlazeSwapFlareAssetReward__factory.createInterface()))).to.eq(
       false
     )
+  })
+
+  it('airdropEnded', async () => {
+    await distribution.setSingleVotePowerBlockNumber(35, 1)
+    await distribution.setMonthToExpireNext(36)
+
+    const token = await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])
+
+    await factory.createPair(wNat.address, token.address)
+    const pairAddress = await factory.getPair(wNat.address, token.address)
+    const newPair = IBlazeSwapPair__factory.connect(pairAddress, wallet)
+
+    expect(await newPair.supportsInterface(getInterfaceID(IBlazeSwapRewards__factory.createInterface()))).to.eq(true)
+    expect(await newPair.supportsInterface(getInterfaceID(IBlazeSwapDelegation__factory.createInterface()))).to.eq(true)
+    expect(await newPair.supportsInterface(getInterfaceID(IBlazeSwapFtsoReward__factory.createInterface()))).to.eq(true)
+    expect(await newPair.supportsInterface(getInterfaceID(IBlazeSwapAirdrop__factory.createInterface()))).to.eq(false)
   })
 
   it('facets', async () => {
@@ -86,10 +113,6 @@ describe('BlazeSwapPairWNat', () => {
     expect(
       await pair.facetAddress(await IBlazeSwapFtsoReward__factory.createInterface().getSighash('distributeFtsoRewards'))
     ).to.eq(ftsoRewardAddress)
-  })
-
-  it('type0 and type1', async () => {
-    expect((await pair.type0()) + (await pair.type1())).to.eq(1)
   })
 
   it('initial state', async () => {

@@ -7,6 +7,8 @@ import './BlazeSwapFlareAssetReward.sol';
 contract BlazeSwapFlareAssetRewardPlugin is IBlazeSwapFlareAssetRewardPlugin {
     address public immutable implementation = address(new BlazeSwapFlareAssetReward());
 
+    bool public active = true;
+
     uint256 public immutable testValue1;
     string public testValue2;
 
