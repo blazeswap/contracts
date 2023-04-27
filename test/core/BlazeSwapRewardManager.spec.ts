@@ -1,13 +1,11 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
 import { pairWNatFixture } from './shared/fixtures'
-import { expandTo18Decimals, getRewardManagerAddress } from './shared/utilities'
-
-import WNAT from '../../artifacts/contracts/core/test/WNAT.sol/WNAT.json'
-import ERC20Test from '../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
-import FtsoRewardManagerABI from '../../artifacts/contracts/core/test/FtsoRewardManager.sol/FtsoRewardManager.json'
+import { expandTo18Decimals, getLatestBlockNumber, getRewardManagerAddress } from './shared/utilities'
 
 import {
   BlazeSwapRewardManager,
@@ -22,12 +20,10 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('BlazeSwapRewardManager', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let registry: FlareContractRegistry
   let ftsoManager: FtsoManager
@@ -38,6 +34,7 @@ describe('BlazeSwapRewardManager', () => {
   let rewardManagerClonable: BlazeSwapRewardManager
   let rewardManager: BlazeSwapRewardManager
   beforeEach(async () => {
+    [wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(pairWNatFixture)
     registry = fixture.registry
     ftsoManager = fixture.ftsoManager
@@ -45,7 +42,7 @@ describe('BlazeSwapRewardManager', () => {
     distribution = fixture.distribution
     wNat = fixture.wNat
     rewardsPlugin = BlazeSwapRewardsPlugin__factory.connect(await fixture.manager.rewardsPlugin(), wallet)
-    rewardManagerClonable = BlazeSwapRewardManager__factory.connect(rewardsPlugin.rewardManager(), wallet)
+    rewardManagerClonable = BlazeSwapRewardManager__factory.connect(await rewardsPlugin.rewardManager(), wallet)
     const rewardManagerAddress = getRewardManagerAddress(fixture.pair.address)
     rewardManager = BlazeSwapRewardManager__factory.connect(rewardManagerAddress, wallet)
   })
@@ -75,9 +72,9 @@ describe('BlazeSwapRewardManager', () => {
     const wNatAmount = expandTo18Decimals(10)
     await wNat.transfer(rewardManager.address, wNatAmount)
 
-    await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(1, await getLatestBlockNumber())
     await ftsoRewardManager.addRewards(rewardManager.address, 1, 10)
-    await ftsoManager.startRewardEpoch(2, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(2, await getLatestBlockNumber())
 
     expect(await ftsoRewardManager.getEpochsWithUnclaimedRewards(rewardManager.address)).to.deep.eq([
       BigNumber.from('1'),
@@ -94,7 +91,7 @@ describe('BlazeSwapRewardManager', () => {
 
   async function replaceFtsoRewardManager(ftsoManager: FtsoManager) {
     const oldManager = await ftsoManager.rewardManager()
-    const newManager = (await deployContract(wallet, FtsoRewardManagerABI, [oldManager])) as FtsoRewardManager
+    const newManager = (await deployContract('FtsoRewardManager', [oldManager])) as FtsoRewardManager
     await registry.setContractAddress('FtsoRewardManager', newManager.address, [ftsoManager.address])
     return newManager
   }
@@ -114,16 +111,16 @@ describe('BlazeSwapRewardManager', () => {
     let curFtsoRewardManager = ftsoRewardManager
 
     // 1st epoch of 1st RM
-    await ftsoManager.startRewardEpoch(1, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(1, await getLatestBlockNumber())
     await curFtsoRewardManager.addRewards(rewardManager.address, 1, 10, { value: wNatAmount })
     // 2nd epoch of deactivated 2nd RM
-    await ftsoManager.startRewardEpoch(2, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(2, await getLatestBlockNumber())
     curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
     await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
     await curFtsoRewardManager.addRewards(rewardManager.address, 2, 20, { value: wNatAmount })
     await curFtsoRewardManager.deactivate()
     // 3rd epoch splitted between 3rd, 4th (deactivated), 5th RMs
-    await ftsoManager.startRewardEpoch(3, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(3, await getLatestBlockNumber())
     curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
     await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
     await curFtsoRewardManager.addRewards(rewardManager.address, 3, 15, { value: wNatAmount })
@@ -135,11 +132,11 @@ describe('BlazeSwapRewardManager', () => {
     await initializeFtsoRewardManager(ftsoManager, curFtsoRewardManager)
     await curFtsoRewardManager.addRewards(rewardManager.address, 3, 15, { value: wNatAmount })
     // 4th epoch on 5th RM, 6th RM not activated yet
-    await ftsoManager.startRewardEpoch(4, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(4, await getLatestBlockNumber())
     await curFtsoRewardManager.addRewards(rewardManager.address, 4, 40, { value: wNatAmount })
     curFtsoRewardManager = await replaceFtsoRewardManager(ftsoManager)
     // start epoch 6
-    await ftsoManager.startRewardEpoch(5, (await provider.getBlock('latest')).number)
+    await ftsoManager.startRewardEpoch(5, await getLatestBlockNumber())
 
     const expectedRewards = expandTo18Decimals(10).div(1000).mul(8) // 0.08
 
@@ -149,7 +146,7 @@ describe('BlazeSwapRewardManager', () => {
   })
 
   it('claimAirdrop', async () => {
-    await distribution.setSingleVotePowerBlockNumber(0, (await provider.getBlock('latest')).number)
+    await distribution.setSingleVotePowerBlockNumber(0, await getLatestBlockNumber())
     await distribution.addAirdrop(rewardManager.address, 0, 100, { value: 100 })
 
     await expect(rewardManager.claimAirdrop(0)).to.be.revertedWith('BlazeSwapRewardManager: FORBIDDEN')
@@ -181,7 +178,7 @@ describe('BlazeSwapRewardManager', () => {
     const wNatAmount = expandTo18Decimals(10)
     await wNat.transfer(rewardManager.address, wNatAmount)
 
-    const newWNat = await deployContract(wallet, WNAT)
+    const newWNat = await deployContract('WNAT')
     await registry.setContractAddress('WNat', newWNat.address, [])
 
     await rewardManager.replaceWNatIfNeeded()
@@ -196,7 +193,7 @@ describe('BlazeSwapRewardManager', () => {
     const wNatAmount = expandTo18Decimals(10)
     await wNat.transfer(rewardManager.address, wNatAmount)
 
-    const erc20 = (await deployContract(wallet, ERC20Test, [1000])) as IERC20
+    const erc20 = (await deployContract('ERC20Test', [1000])) as IERC20
     await erc20.transfer(rewardManager.address, 500)
 
     await expect(rewardManager.withdrawERC20(wNat.address, 0, wallet.address)).to.be.revertedWith(

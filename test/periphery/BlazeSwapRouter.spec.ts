@@ -1,9 +1,10 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants, utils } from 'ethers'
-import { ecsign } from 'ethereumjs-util'
 
-import { expandTo18Decimals, getApprovalDigest, increaseTime, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
+import { expandTo18Decimals, getApprovalSignature, increaseTime, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
 
 import BlazeSwapRouter from '../../artifacts/contracts/periphery/BlazeSwapRouter.sol/BlazeSwapRouter.json'
 
@@ -20,12 +21,8 @@ import {
   RouterEventEmitter,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapRouter', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
   const AddressDead = utils.getAddress('0x000000000000000000000000000000000000dEaD')
 
   let token0: IERC20
@@ -38,6 +35,7 @@ describe('BlazeSwapRouter', () => {
   let WNATPair: IBlazeSwapPair
   let routerEventEmitter: RouterEventEmitter
   beforeEach(async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
     token0 = fixture.token0
     token1 = fixture.token1
@@ -51,7 +49,7 @@ describe('BlazeSwapRouter', () => {
   })
 
   afterEach(async function () {
-    expect(await provider.getBalance(router.address)).to.eq(constants.Zero)
+    expect(await hre.ethers.provider.getBalance(router.address)).to.eq(constants.Zero)
   })
 
   it('factory, wNat', async () => {
@@ -236,14 +234,13 @@ describe('BlazeSwapRouter', () => {
     const expectedLiquidity = expandTo18Decimals(2)
 
     const nonce = await pair.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       pair,
       { owner: wallet.address, spender: router.address, value: expectedLiquidity.sub(MINIMUM_LIQUIDITY) },
       nonce,
       constants.MaxUint256
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     await router.removeLiquidityWithPermit(
       token0.address,
@@ -271,14 +268,13 @@ describe('BlazeSwapRouter', () => {
     const expectedLiquidity = expandTo18Decimals(2)
 
     const nonce = await WNATPair.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       WNATPair,
       { owner: wallet.address, spender: router.address, value: expectedLiquidity.sub(MINIMUM_LIQUIDITY) },
       nonce,
       constants.MaxUint256
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     await router.removeLiquidityNATWithPermit(
       WNATPartner.address,
@@ -343,11 +339,11 @@ describe('BlazeSwapRouter', () => {
 
     it('gas', async () => {
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await pair.sync()
 
       await token0.approve(router.address, constants.MaxUint256)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapExactTokensForTokens(
         swapAmount,
         0,
@@ -409,11 +405,11 @@ describe('BlazeSwapRouter', () => {
 
     it('gas', async () => {
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await pair.sync()
 
       await token0.approve(router.address, constants.MaxUint256)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapTokensForExactTokens(
         outputAmount,
         constants.MaxUint256,
@@ -498,11 +494,11 @@ describe('BlazeSwapRouter', () => {
       await WNATPair.mint(wallet.address)
 
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await WNATPair.sync()
 
       const swapAmount = expandTo18Decimals(1)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapExactNATForTokens(
         0,
         [WNAT.address, WNATPartner.address],
@@ -584,11 +580,11 @@ describe('BlazeSwapRouter', () => {
 
     it('gas', async () => {
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await pair.sync()
 
       await WNATPartner.approve(router.address, constants.MaxUint256)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapTokensForExactNAT(
         outputAmount,
         constants.MaxUint256,
@@ -668,11 +664,11 @@ describe('BlazeSwapRouter', () => {
 
     it('gas', async () => {
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await pair.sync()
 
       await WNATPartner.approve(router.address, constants.MaxUint256)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapExactTokensForNAT(
         swapAmount,
         0,
@@ -755,7 +751,7 @@ describe('BlazeSwapRouter', () => {
 
     it('gas', async () => {
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await pair.sync()
 
       const tx = await router.swapNATForExactTokens(
@@ -783,14 +779,13 @@ describe('BlazeSwapRouter', () => {
 
     const token0Permit = IERC20Permit__factory.connect(token0.address, wallet)
     const nonce = await token0Permit.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       token0,
       { owner: wallet.address, spender: router.address, value: swapAmount },
       nonce,
       constants.MaxUint256
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     const coder = new Coder(BlazeSwapRouter.abi)
     await expect(

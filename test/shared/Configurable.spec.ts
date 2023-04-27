@@ -1,19 +1,18 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
 
-const { deployContract } = waffle
-
-import ConfigurableTest from '../../artifacts/contracts/shared/test/ConfigurableTest.sol/ConfigurableTest.json'
-import CentrallyConfigurableTest from '../../artifacts/contracts/shared/test/CentrallyConfigurableTest.sol/CentrallyConfigurableTest.json'
+import { deployContract } from './shared/utilities'
 
 describe('Configurable', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
-
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
   let configurable: Contract
   before('deploy ConfigurableTest', async () => {
-    configurable = await deployContract(wallet, ConfigurableTest)
+    [wallet, other] = await hre.ethers.getSigners()
+    await wallet.getAddress()
+    configurable = await deployContract('ConfigurableTest')
   })
 
   it('configSetter, value', async () => {
@@ -39,7 +38,7 @@ describe('Configurable', () => {
   describe('CentrallyConfigurable', () => {
     let centrallyConfigurable: Contract
     before('deploy CentrallyConfigurableTest', async () => {
-      centrallyConfigurable = await deployContract(wallet, CentrallyConfigurableTest, [configurable.address])
+      centrallyConfigurable = await deployContract('CentrallyConfigurableTest', [configurable.address])
     })
 
     it('setValue', async () => {

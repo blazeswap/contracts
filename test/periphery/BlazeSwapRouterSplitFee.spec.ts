@@ -1,10 +1,11 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
 import { expandTo18Decimals, increaseTime } from '../core/shared/utilities'
 import { routerFixture } from './shared/fixtures'
-import DeflatingERC20Test from '../../artifacts/contracts/periphery/test/DeflatingERC20Test.sol/DeflatingERC20Test.json'
 import {
   IBlazeSwapFactory,
   IBlazeSwapManager,
@@ -15,12 +16,12 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('BlazeSwapRouter split-fee', () => {
-  const provider = waffle.provider
-  const [wallet, feeRecipient, splitFeeRecipient] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let feeRecipient: SignerWithAddress
+  let splitFeeRecipient: SignerWithAddress
 
   let token0: IERC20
   let WNAT: IWNat
@@ -30,6 +31,7 @@ describe('BlazeSwapRouter split-fee', () => {
   let router: IBlazeSwapRouter
   let WNATPair: IBlazeSwapPair
   beforeEach(async function () {
+    ;[wallet, feeRecipient, splitFeeRecipient] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
     token0 = fixture.token0
     WNAT = fixture.wNat
@@ -44,7 +46,7 @@ describe('BlazeSwapRouter split-fee', () => {
   })
 
   afterEach(async function () {
-    expect(await provider.getBalance(router.address)).to.eq(constants.Zero)
+    expect(await hre.ethers.provider.getBalance(router.address)).to.eq(constants.Zero)
   })
 
   describe('splitFee', () => {
@@ -83,11 +85,11 @@ describe('BlazeSwapRouter split-fee', () => {
       await WNATPair.mint(wallet.address)
 
       // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       await WNATPair.sync()
 
       const swapAmount = expandTo18Decimals(1)
-      await increaseTime(provider, 1) // not really needed by hardhat
+      await increaseTime(1) // not really needed by hardhat
       const tx = await router.swapExactNATForTokens(
         0,
         [WNAT.address, WNATPartner.address],
@@ -106,7 +108,7 @@ describe('BlazeSwapRouter split-fee', () => {
     let DTT: IERC20
     let DTTPair: IBlazeSwapPair
     beforeEach(async function () {
-      DTT = (await deployContract(wallet, DeflatingERC20Test, [expandTo18Decimals(10000)])) as IERC20
+      DTT = (await deployContract('DeflatingERC20Test', [expandTo18Decimals(10000)])) as IERC20
 
       // make a DTT<>WNAT pair
       await factory.createPair(DTT.address, WNAT.address)
@@ -115,7 +117,7 @@ describe('BlazeSwapRouter split-fee', () => {
     })
 
     afterEach(async function () {
-      expect(await provider.getBalance(router.address)).to.eq(0)
+      expect(await hre.ethers.provider.getBalance(router.address)).to.eq(0)
     })
 
     async function addLiquidity(DTTAmount: BigNumber, WNATAmount: BigNumber) {

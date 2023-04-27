@@ -1,6 +1,8 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber } from 'ethers'
 
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
 import { pairFlareAssetsFixture, TEST_PROVIDERS } from './shared/fixtures'
@@ -20,12 +22,10 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapPairFlareAssets', () => {
-  const provider = waffle.provider
-  const [wallet, other1, other2] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let other1: SignerWithAddress
+  let other2: SignerWithAddress
 
   let manager: IBlazeSwapManager
   let wNat: IWNat
@@ -37,6 +37,7 @@ describe('BlazeSwapPairFlareAssets', () => {
   let delegation: IBlazeSwapDelegation
   let rewardManagerAddress: string
   beforeEach(async () => {
+    [wallet, other1, other2] = await hre.ethers.getSigners()
     const fixture = await loadFixture(pairFlareAssetsFixture)
     manager = fixture.manager
     wNat = fixture.wNat
@@ -94,7 +95,7 @@ describe('BlazeSwapPairFlareAssets', () => {
     expect(await delegation.mostVotedProviders(10)).to.deep.eq([[], []])
   })
 
-  async function addLiquidity(minter: Wallet, token0Amount: BigNumber, token1Amount: BigNumber) {
+  async function addLiquidity(minter: SignerWithAddress, token0Amount: BigNumber, token1Amount: BigNumber) {
     await token0.transfer(pair.address, token0Amount)
     await token1.transfer(pair.address, token1Amount)
     const minterPair = pair.connect(minter)

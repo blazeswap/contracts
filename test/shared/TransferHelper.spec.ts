@@ -1,27 +1,18 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, constants } from 'ethers'
 
-import TransferHelperTest from '../../artifacts/contracts/shared/test/TransferHelperTest.sol/TransferHelperTest.json'
-import FakeFallback from '../../artifacts/contracts/shared/test/TransferHelperTest.sol/TransferHelperTestFakeFallback.json'
-import FakeERC20Noncompliant from '../../artifacts/contracts/shared/test/TransferHelperTest.sol/TransferHelperTestFakeERC20Noncompliant.json'
-import FakeERC20Compliant from '../../artifacts/contracts/shared/test/TransferHelperTest.sol/TransferHelperTestFakeERC20Compliant.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 describe('TransferHelper', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let transferHelper: Contract
   let fakeFallback: Contract
   let fakeCompliant: Contract
   let fakeNoncompliant: Contract
   before(async () => {
-    transferHelper = await deployContract(wallet, TransferHelperTest)
-    fakeFallback = await deployContract(wallet, FakeFallback)
-    fakeNoncompliant = await deployContract(wallet, FakeERC20Noncompliant)
-    fakeCompliant = await deployContract(wallet, FakeERC20Compliant)
+    transferHelper = await deployContract('TransferHelperTest')
+    fakeFallback = await deployContract('TransferHelperTestFakeFallback')
+    fakeNoncompliant = await deployContract('TransferHelperTestFakeERC20Noncompliant')
+    fakeCompliant = await deployContract('TransferHelperTestFakeERC20Compliant')
   })
 
   // sets up the fixtures for each token situation that should be tested

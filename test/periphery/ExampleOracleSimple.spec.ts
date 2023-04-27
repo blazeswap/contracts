@@ -1,21 +1,20 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 
 import { expandTo18Decimals, setNextBlockTime, encodePrice } from '../core/shared/utilities'
 import { routerFixture } from './shared/fixtures'
 
-import ExampleOracleSimpleArtifact from '../../artifacts/contracts/periphery/examples/ExampleOracleSimple.sol/ExampleOracleSimple.json'
 import { ExampleOracleSimple, IBlazeSwapPair, IERC20 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 const token0Amount = expandTo18Decimals(5)
 const token1Amount = expandTo18Decimals(10)
 
 describe('ExampleOracleSimple', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let token0: IERC20
   let token1: IERC20
@@ -29,13 +28,14 @@ describe('ExampleOracleSimple', () => {
   }
 
   beforeEach(async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
 
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
     await addLiquidity()
-    exampleOracleSimple = (await deployContract(wallet, ExampleOracleSimpleArtifact, [
+    exampleOracleSimple = (await deployContract('ExampleOracleSimple', [
       fixture.factory.address,
       token0.address,
       token1.address,
@@ -44,11 +44,11 @@ describe('ExampleOracleSimple', () => {
 
   it('update', async () => {
     const blockTimestamp = (await pair.getReserves())[2]
-    // await mineBlock(provider, blockTimestamp + 60 * 60 * 23) // ganache
-    await setNextBlockTime(provider, blockTimestamp + 60 * 60 * 23) // hardhat
+    // await mineBlock(blockTimestamp + 60 * 60 * 23) // ganache
+    await setNextBlockTime(blockTimestamp + 60 * 60 * 23) // hardhat
     await expect(exampleOracleSimple.update()).to.be.reverted
-    // await mineBlock(provider, blockTimestamp + 60 * 60 * 24) // ganache
-    await setNextBlockTime(provider, blockTimestamp + 60 * 60 * 24) // hardhat
+    // await mineBlock(blockTimestamp + 60 * 60 * 24) // ganache
+    await setNextBlockTime(blockTimestamp + 60 * 60 * 24) // hardhat
     await exampleOracleSimple.update()
 
     const expectedPrice = encodePrice(token0Amount, token1Amount)

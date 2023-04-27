@@ -1,6 +1,8 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, constants, Wallet } from 'ethers'
+import { BigNumber, constants } from 'ethers'
 
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
 import { expandTo18Decimals, getRewardManagerAddress, MINIMUM_LIQUIDITY } from './shared/utilities'
@@ -22,12 +24,10 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapDelegation', () => {
-  const provider = waffle.provider
-  const [wallet, other1, other2] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let other1: SignerWithAddress
+  let other2: SignerWithAddress
 
   let manager: IBlazeSwapManager
   let wNat: IWNat
@@ -37,6 +37,7 @@ describe('BlazeSwapDelegation', () => {
   let delegation: IBlazeSwapDelegation
   let rewardManagerAddress: string
   beforeEach(async () => {
+    [wallet, other1, other2] = await hre.ethers.getSigners()
     const fixture = await loadFixture(pairWNatFixture)
     manager = fixture.manager
     wNat = fixture.wNat
@@ -77,14 +78,14 @@ describe('BlazeSwapDelegation', () => {
     expect(await delegation.voteOf(wallet.address)).to.eq(TEST_PROVIDERS[1])
   })
 
-  async function addLiquidity(minter: Wallet, tokenAmount: BigNumber, wNatAmount: BigNumber) {
+  async function addLiquidity(minter: SignerWithAddress, tokenAmount: BigNumber, wNatAmount: BigNumber) {
     await token0.transfer(pair.address, wNat.address == token0.address ? wNatAmount : tokenAmount)
     await token1.transfer(pair.address, wNat.address == token1.address ? wNatAmount : tokenAmount)
     const minterPair = pair.connect(minter)
     await minterPair.mint(minter.address)
   }
 
-  async function removeLiquidity(minter: Wallet, amount: BigNumber) {
+  async function removeLiquidity(minter: SignerWithAddress, amount: BigNumber) {
     const minterPair = pair.connect(minter)
     await minterPair.transfer(pair.address, amount)
     await minterPair.burn(minter.address)
@@ -234,6 +235,10 @@ describe('BlazeSwapDelegation', () => {
   })
 
   it('changeProviders: no votes', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await delegation.voteFor(TEST_PROVIDERS[1])
+
     await expect(delegation.changeProviders([TEST_PROVIDERS[0]])).to.be.revertedWith('BlazeSwap: NO_VOTES')
   })
 
@@ -281,6 +286,10 @@ describe('BlazeSwapDelegation', () => {
   })
 
   it('changeProviders: AddressZero', async () => {
+    await addLiquidity(wallet, expandTo18Decimals(1), expandTo18Decimals(1))
+
+    await delegation.voteFor(TEST_PROVIDERS[1])
+
     await expect(delegation.changeProviders([constants.AddressZero])).to.be.revertedWith('BlazeSwap: ZERO_ADDRESS')
   })
 

@@ -1,38 +1,29 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, constants } from 'ethers'
 import { formatBytes32String } from '@ethersproject/strings'
 
-import SafeERC20NamerTest from '../../artifacts/contracts/shared/test/SafeERC20NamerTest.sol/SafeERC20NamerTest.json'
-import FakeCompliantERC20 from '../../artifacts/contracts/shared/test/SafeERC20NamerTest.sol/NamerTestFakeCompliantERC20.json'
-import FakeNoncompliantERC20 from '../../artifacts/contracts/shared/test/SafeERC20NamerTest.sol/NamerTestFakeNoncompliantERC20.json'
-import FakeOptionalERC20 from '../../artifacts/contracts/shared/test/SafeERC20NamerTest.sol/NamerTestFakeOptionalERC20.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 // last byte in bytes32 strings is null terminator
-const fullBytes32Name = 'NAME'.repeat(8).substr(0, 31)
-const fullBytes32Symbol = 'SYMB'.repeat(8).substr(0, 31)
+const fullBytes32Name = 'NAME'.repeat(8).substring(0, 31)
+const fullBytes32Symbol = 'SYMB'.repeat(8).substring(0, 31)
 
 describe('SafeERC20Namer', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let safeNamer: Contract
   before('deploy SafeERC20NamerTest', async () => {
-    safeNamer = await deployContract(wallet, SafeERC20NamerTest)
+    safeNamer = await deployContract('SafeERC20NamerTest')
   })
 
   function deployCompliant({ name, symbol }: { name: string; symbol: string }): Promise<Contract> {
-    return deployContract(wallet, FakeCompliantERC20, [name, symbol])
+    return deployContract('NamerTestFakeCompliantERC20', [name, symbol])
   }
 
   function deployNoncompliant({ name, symbol }: { name: string; symbol: string }): Promise<Contract> {
-    return deployContract(wallet, FakeNoncompliantERC20, [formatBytes32String(name), formatBytes32String(symbol)])
+    return deployContract('NamerTestFakeNoncompliantERC20', [formatBytes32String(name), formatBytes32String(symbol)])
   }
 
   function deployOptional(): Promise<Contract> {
-    return deployContract(wallet, FakeOptionalERC20)
+    return deployContract('NamerTestFakeOptionalERC20')
   }
 
   async function getName(tokenAddress: string): Promise<string> {

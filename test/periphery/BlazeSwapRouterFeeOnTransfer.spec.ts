@@ -1,33 +1,31 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
 import { routerFixture } from './shared/fixtures'
-import { expandTo18Decimals, getApprovalDigest, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
+import { expandTo18Decimals, getApprovalSignature, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
 
-import { ecsign } from 'ethereumjs-util'
-
-import DeflatingERC20Test from '../../artifacts/contracts/periphery/test/DeflatingERC20Test.sol/DeflatingERC20Test.json'
 import { IBlazeSwapPair, IBlazeSwapPair__factory, IBlazeSwapRouter, IERC20, IWNat } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('BlazeSwapRouter fee-on-transfer tokens', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let DTT: IERC20
   let WNAT: IWNat
   let router: IBlazeSwapRouter
   let pair: IBlazeSwapPair
   beforeEach(async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
 
     WNAT = fixture.wNat
     router = fixture.router
 
-    DTT = (await deployContract(wallet, DeflatingERC20Test, [expandTo18Decimals(10000)])) as IERC20
+    DTT = (await deployContract('DeflatingERC20Test', [expandTo18Decimals(10000)])) as IERC20
 
     // make a DTT<>WNAT pair
     await fixture.factory.createPair(DTT.address, WNAT.address)
@@ -36,7 +34,7 @@ describe('BlazeSwapRouter fee-on-transfer tokens', () => {
   })
 
   afterEach(async function () {
-    expect(await provider.getBalance(router.address)).to.eq(0)
+    expect(await hre.ethers.provider.getBalance(router.address)).to.eq(0)
   })
 
   async function addLiquidity(DTTAmount: BigNumber, WNATAmount: BigNumber) {
@@ -128,13 +126,13 @@ describe('BlazeSwapRouter fee-on-transfer tokens', () => {
     const expectedLiquidity = expandTo18Decimals(2)
 
     const nonce = await pair.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       pair,
       { owner: wallet.address, spender: router.address, value: expectedLiquidity.sub(MINIMUM_LIQUIDITY) },
       nonce,
       constants.MaxUint256
     )
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     const DTTInPair = await DTT.balanceOf(pair.address)
     const WNATInPair = await WNAT.balanceOf(pair.address)
@@ -257,27 +255,26 @@ describe('BlazeSwapRouter fee-on-transfer tokens', () => {
 })
 
 describe('fee-on-transfer tokens: reloaded', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let DTT: IERC20
   let DTT2: IERC20
   let router: IBlazeSwapRouter
   beforeEach(async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
 
     router = fixture.router
 
-    DTT = (await deployContract(wallet, DeflatingERC20Test, [expandTo18Decimals(10000)])) as IERC20
-    DTT2 = (await deployContract(wallet, DeflatingERC20Test, [expandTo18Decimals(10000)])) as IERC20
+    DTT = (await deployContract('DeflatingERC20Test', [expandTo18Decimals(10000)])) as IERC20
+    DTT2 = (await deployContract('DeflatingERC20Test', [expandTo18Decimals(10000)])) as IERC20
 
     // make a DTT<>WNAT pair
     await fixture.factory.createPair(DTT.address, DTT2.address)
   })
 
   afterEach(async function () {
-    expect(await provider.getBalance(router.address)).to.eq(0)
+    expect(await hre.ethers.provider.getBalance(router.address)).to.eq(0)
   })
 
   async function addLiquidity(DTTAmount: BigNumber, DTT2Amount: BigNumber) {

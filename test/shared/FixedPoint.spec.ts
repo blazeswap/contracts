@@ -1,20 +1,14 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, BigNumber } from 'ethers'
 
-import FixedPointTest from '../../artifacts/contracts/shared/test/FixedPointTest.sol/FixedPointTest.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 const Q112 = BigNumber.from(2).pow(112)
 
 describe('FixedPoint', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let fixedPoint: Contract
   before('deploy FixedPointTest', async () => {
-    fixedPoint = await deployContract(wallet, FixedPointTest)
+    fixedPoint = await deployContract('FixedPointTest')
   })
 
   describe('#encode', () => {

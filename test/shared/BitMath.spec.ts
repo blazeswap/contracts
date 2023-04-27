@@ -1,18 +1,12 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, BigNumber } from 'ethers'
 
-import BitMathTest from '../../artifacts/contracts/shared/test/BitMathTest.sol/BitMathTest.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 describe('BitMath', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let bitMath: Contract
   before('deploy BitMathTest', async () => {
-    bitMath = await deployContract(wallet, BitMathTest)
+    bitMath = await deployContract('BitMathTest')
   })
 
   describe('#mostSignificantBit', () => {

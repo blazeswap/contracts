@@ -1,9 +1,10 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
-import { ecsign } from 'ethereumjs-util'
 
-import { expandTo18Decimals, getApprovalDigest, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
+import { expandTo18Decimals, getApprovalSignature, MINIMUM_LIQUIDITY } from '../core/shared/utilities'
 
 import { migratorFixture } from './shared/fixtures'
 import {
@@ -14,12 +15,9 @@ import {
   IERC20,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapMigrator', () => {
-  const provider = waffle.provider
-  const [wallet, walletOther] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let walletOther: SignerWithAddress
 
   let token: IERC20
   let tokenDeflationary: IERC20
@@ -29,6 +27,7 @@ describe('BlazeSwapMigrator', () => {
   let factory: IBlazeSwapFactory
   let migrator: IBlazeSwapMigrator
   beforeEach(async function () {
+    ;[wallet, walletOther] = await hre.ethers.getSigners()
     const fixture = await loadFixture(migratorFixture)
     token = fixture.token
     tokenDeflationary = fixture.tokenDeflationary
@@ -211,14 +210,13 @@ describe('BlazeSwapMigrator', () => {
     const expectedLiquidity = expandTo18Decimals(2)
 
     const nonce = await pairOld.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       pairOld,
       { owner: wallet.address, spender: migrator.address, value: expectedLiquidity },
       nonce,
       constants.MaxUint256
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     await expect(
       migrator.migrateWithPermit(
@@ -291,14 +289,13 @@ describe('BlazeSwapMigrator', () => {
 
     const pairOld = IBlazeSwapBasePair__factory.connect(pairOldAddress, wallet)
     const nonce = await pairOld.nonces(wallet.address)
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       pairOld,
       { owner: wallet.address, spender: migrator.address, value: liquidity },
       nonce,
       constants.MaxUint256
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     const amountTokenMin = reserveToken.mul(liquidity).div(totalSupply).mul(99).div(100)
     const amountTokenMinReceived = amountTokenMin.mul(99).div(100)

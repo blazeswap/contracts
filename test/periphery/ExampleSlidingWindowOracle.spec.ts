@@ -1,24 +1,23 @@
 // This test cannot work with hardhat, because it expects blocks mined at the same timestamp
 // https://github.com/NomicFoundation/hardhat/pull/2561
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 
 import { expandTo18Decimals, mineBlock, encodePrice } from '../core/shared/utilities'
 import { routerFixture } from './shared/fixtures'
 
-import ExampleSlidingWindowOracleArtifact from '../../artifacts/contracts/periphery/examples/ExampleSlidingWindowOracle.sol/ExampleSlidingWindowOracle.json'
 import { ExampleSlidingWindowOracle, IBlazeSwapFactory, IBlazeSwapPair, IERC20, IWNat } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 const defaultToken0Amount = expandTo18Decimals(5)
 const defaultToken1Amount = expandTo18Decimals(10)
 
 describe.skip('ExampleSlidingWindowOracle', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let token0: IERC20
   let token1: IERC20
@@ -46,7 +45,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
   }
 
   function deployOracle(windowSize: number, granularity: number) {
-    return deployContract(wallet, ExampleSlidingWindowOracleArtifact, [
+    return deployContract('ExampleSlidingWindowOracle', [
       factory.address,
       windowSize,
       granularity,
@@ -54,6 +53,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
   }
 
   beforeEach('deploy fixture', async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
 
     token0 = fixture.token0
@@ -70,7 +70,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
 
   // must come before adding liquidity to pairs for correct cumulative price computations
   // cannot use 0 because that resets to current timestamp
-  beforeEach(`set start time to ${startTime}`, () => mineBlock(provider, startTime))
+  beforeEach(`set start time to ${startTime}`, () => mineBlock(startTime))
 
   it('requires granularity to be greater than 0', async () => {
     await expect(deployOracle(defaultWindowSize, 0)).to.be.revertedWith('SlidingWindowOracle: GRANULARITY')
@@ -159,7 +159,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
 
     it('gas for second update different period (no allocate, no skip)', async () => {
       await slidingWindowOracle.update(token0.address, token1.address)
-      await mineBlock(provider, startTime + 3600)
+      await mineBlock(startTime + 3600)
       const tx = await slidingWindowOracle.update(token0.address, token1.address)
       const receipt = await tx.wait()
       expect(receipt.gasUsed).to.eq('104440')
@@ -169,7 +169,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
       await slidingWindowOracle.update(token0.address, token1.address)
       const before = await slidingWindowOracle.pairObservations(pair.address, observationIndexOf(0))
       // first hour still
-      await mineBlock(provider, startTime + 1800)
+      await mineBlock(startTime + 1800)
       await slidingWindowOracle.update(token0.address, token1.address)
       const after = await slidingWindowOracle.pairObservations(pair.address, observationIndexOf(1800))
       expect(observationIndexOf(1800)).to.eq(observationIndexOf(0))
@@ -212,7 +212,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
         previousCumulativePrices = [await pair.price0CumulativeLast(), await pair.price1CumulativeLast()]
         await slidingWindowOracle.update(token0.address, token1.address)
         blockTimestamp = previousBlockTimestamp + 23 * 3600
-        await mineBlock(provider, blockTimestamp)
+        await mineBlock(blockTimestamp)
         await slidingWindowOracle.update(token0.address, token1.address)
       })
 
@@ -245,20 +245,20 @@ describe.skip('ExampleSlidingWindowOracle', () => {
         // starting price of 1:2, or token0 = 2token1, token1 = 0.5token0
         await slidingWindowOracle.update(token0.address, token1.address) // hour 0, 1:2
         // change the price at hour 3 to 1:1 and immediately update
-        await mineBlock(provider, startTime + 3 * hour)
+        await mineBlock(startTime + 3 * hour)
         await addLiquidity(defaultToken0Amount, BigNumber.from(0))
         await slidingWindowOracle.update(token0.address, token1.address)
 
         // change the ratios at hour 6:00 to 2:1, don't update right away
-        await mineBlock(provider, startTime + 6 * hour)
+        await mineBlock(startTime + 6 * hour)
         await token0.transfer(pair.address, defaultToken0Amount.mul(2))
         await pair.sync()
 
         // update at hour 9:00 (price has been 2:1 for 3 hours, invokes counterfactual)
-        await mineBlock(provider, startTime + 9 * hour)
+        await mineBlock(startTime + 9 * hour)
         await slidingWindowOracle.update(token0.address, token1.address)
         // move to hour 23:00 so we can check prices
-        await mineBlock(provider, startTime + 23 * hour)
+        await mineBlock(startTime + 23 * hour)
       })
 
       it('provides the correct ratio in consult token0', async () => {
@@ -274,7 +274,7 @@ describe.skip('ExampleSlidingWindowOracle', () => {
 
       // price has been 2:1 all of 23 hours
       describe('hour 32', () => {
-        beforeEach('set hour 32', () => mineBlock(provider, startTime + 32 * hour))
+        beforeEach('set hour 32', () => mineBlock(startTime + 32 * hour))
         it('provides the correct ratio in consult token0', async () => {
           // at hour 23, price of token 0 spent 3 hours at 2, 3 hours at 1, 17 hours at 0.5 so price should
           // be less than 1

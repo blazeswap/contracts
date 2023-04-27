@@ -1,19 +1,19 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
 import { baseManagerFixture } from './shared/fixtures'
 import { IBlazeSwapBaseManager } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapBaseManager', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet, other], provider)
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
 
   let manager: IBlazeSwapBaseManager
   beforeEach(async () => {
+    [wallet, other] = await hre.ethers.getSigners()
     const fixture = await loadFixture(baseManagerFixture)
     manager = fixture.manager
   })

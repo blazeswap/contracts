@@ -1,21 +1,21 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, Contract } from 'ethers'
+import type { Signer } from 'ethers'
 
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 import Child from '../../artifacts/contracts/shared/test/ParentRelationTest.sol/Child.json'
-import ParentRelationTest from '../../artifacts/contracts/shared/test/ParentRelationTest.sol/ParentRelationTest.json'
 
 describe('ParentRelation', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
-
+  let wallet: Signer
+  let other: Signer
   let pr: Contract
   let child: Contract
   before('deploy ParentRelationTest', async () => {
-    pr = await deployContract(wallet, ParentRelationTest)
-    child = new Contract(await pr.c(), JSON.stringify(Child.abi), provider).connect(wallet)
+    [wallet, other] = await hre.ethers.getSigners()
+    pr = await deployContract('ParentRelationTest')
+    child = new Contract(await pr.c(), JSON.stringify(Child.abi), wallet)
   })
 
   it('allow calls from parent', async () => {

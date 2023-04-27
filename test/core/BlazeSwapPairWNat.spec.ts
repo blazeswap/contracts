@@ -1,8 +1,8 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-
-import ERC20Test from '../../artifacts/contracts/core/test/ERC20Test.sol/ERC20Test.json'
+import { BigNumber } from 'ethers'
 
 import { expandTo18Decimals, getRewardManagerAddress, getInterfaceID } from './shared/utilities'
 import { pairWNatFixture, TEST_PROVIDERS } from './shared/fixtures'
@@ -25,12 +25,12 @@ import {
   IWNat,
 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('BlazeSwapPairWNat', () => {
-  const provider = waffle.provider
-  const [wallet, other1, other2] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let other1: SignerWithAddress
+  let other2: SignerWithAddress
 
   let manager: IBlazeSwapManager
   let factory: IBlazeSwapFactory
@@ -42,6 +42,7 @@ describe('BlazeSwapPairWNat', () => {
   let distribution: DistributionToDelegators
   let rewardManagerAddress: string
   beforeEach(async () => {
+    [wallet, other1, other2] = await hre.ethers.getSigners()
     const fixture = await loadFixture(pairWNatFixture)
     manager = fixture.manager
     factory = fixture.factory
@@ -68,7 +69,7 @@ describe('BlazeSwapPairWNat', () => {
     await distribution.setSingleVotePowerBlockNumber(35, 1)
     await distribution.setMonthToExpireNext(36)
 
-    const token = await deployContract(wallet, ERC20Test, [expandTo18Decimals(10000)])
+    const token = await deployContract('ERC20Test', [expandTo18Decimals(10000)])
 
     await factory.createPair(wNat.address, token.address)
     const pairAddress = await factory.getPair(wNat.address, token.address)
@@ -127,7 +128,7 @@ describe('BlazeSwapPairWNat', () => {
     expect(await delegation.mostVotedProviders(10)).to.deep.eq([[], []])
   })
 
-  async function addLiquidity(minter: Wallet, tokenAmount: BigNumber, wNatAmount: BigNumber) {
+  async function addLiquidity(minter: SignerWithAddress, tokenAmount: BigNumber, wNatAmount: BigNumber) {
     await token0.transfer(pair.address, wNat.address == token0.address ? wNatAmount : tokenAmount)
     await token1.transfer(pair.address, wNat.address == token1.address ? wNatAmount : tokenAmount)
     const minterPair = pair.connect(minter)

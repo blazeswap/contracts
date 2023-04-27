@@ -1,4 +1,6 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
@@ -8,20 +10,18 @@ import { baseFactoryFixture } from './shared/fixtures'
 import BlazeSwapBasePair from '../../artifacts/contracts/core/BlazeSwapBasePair.sol/BlazeSwapBasePair.json'
 import { IBlazeSwapBaseFactory, IBlazeSwapBasePair__factory } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 const TEST_ADDRESSES: [string, string] = [
   '0x1000000000000000000000000000000000000000',
   '0x2000000000000000000000000000000000000000',
 ]
 
 describe('BlazeSwapBaseFactory', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet, other], provider)
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
 
   let factory: IBlazeSwapBaseFactory
   beforeEach(async () => {
+    [wallet, other] = await hre.ethers.getSigners()
     const fixture = await loadFixture(baseFactoryFixture)
     factory = fixture.factory
   })

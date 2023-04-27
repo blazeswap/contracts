@@ -1,31 +1,29 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 import { defaultAbiCoder } from '@ethersproject/abi'
 import { keccak256 } from '@ethersproject/keccak256'
 import { hexlify } from '@ethersproject/bytes'
 import { toUtf8Bytes } from '@ethersproject/strings'
-import { ecsign } from 'ethereumjs-util'
 
-import { expandTo18Decimals, getApprovalDigest } from './shared/utilities'
+import { expandTo18Decimals, getApprovalSignature, getLatestBlockNumber } from './shared/utilities'
 
-import BlazeSwapERC20SnapshotTestArtifact from '../../artifacts/contracts/core/test/BlazeSwapERC20SnapshotTest.sol/BlazeSwapERC20SnapshotTest.json'
 import { BlazeSwapERC20SnapshotTest } from '../../typechain-types'
 
-const { deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 const TOTAL_SUPPLY = expandTo18Decimals(10000)
 const TEST_AMOUNT = expandTo18Decimals(10)
 
 describe('BlazeSwapERC20Snapshot', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
 
   let token: BlazeSwapERC20SnapshotTest
   beforeEach(async () => {
-    token = (await deployContract(wallet, BlazeSwapERC20SnapshotTestArtifact, [
-      TOTAL_SUPPLY,
-    ])) as BlazeSwapERC20SnapshotTest
+    [wallet, other] = await hre.ethers.getSigners()
+    token = (await deployContract('BlazeSwapERC20SnapshotTest', [TOTAL_SUPPLY])) as BlazeSwapERC20SnapshotTest
   })
 
   it('name, symbol, decimals, totalSupply, balanceOf, DOMAIN_SEPARATOR, PERMIT_TYPEHASH', async () => {
@@ -99,14 +97,13 @@ describe('BlazeSwapERC20Snapshot', () => {
   it('permit', async () => {
     const nonce = await token.nonces(wallet.address)
     const deadline = constants.MaxUint256
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       token,
       { owner: wallet.address, spender: other.address, value: TEST_AMOUNT },
       nonce,
       deadline
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     await expect(token.permit(wallet.address, other.address, TEST_AMOUNT, deadline, v, hexlify(r), hexlify(s)))
       .to.emit(token, 'Approval')
@@ -116,24 +113,22 @@ describe('BlazeSwapERC20Snapshot', () => {
   })
 
   it('balanceOfAt, totalSupplyAt', async () => {
-    const initialBlock = await provider.getBlock('latest')
+    const initialBlock = await getLatestBlockNumber()
     await token.transfer(other.address, TEST_AMOUNT)
-    const intermediateBlock = await provider.getBlock('latest')
+    const intermediateBlock = getLatestBlockNumber()
     await token.burn(TEST_AMOUNT)
-    const finalBlock = await provider.getBlock('latest')
+    const finalBlock = getLatestBlockNumber()
     expect(await token.totalSupplyAt(0)).to.eq(0)
-    expect(await token.totalSupplyAt(initialBlock.number)).to.eq(TOTAL_SUPPLY)
-    expect(await token.totalSupplyAt(intermediateBlock.number)).to.eq(TOTAL_SUPPLY)
-    expect(await token.totalSupplyAt(finalBlock.number)).to.eq(TOTAL_SUPPLY.sub(TEST_AMOUNT))
+    expect(await token.totalSupplyAt(initialBlock)).to.eq(TOTAL_SUPPLY)
+    expect(await token.totalSupplyAt(intermediateBlock)).to.eq(TOTAL_SUPPLY)
+    expect(await token.totalSupplyAt(finalBlock)).to.eq(TOTAL_SUPPLY.sub(TEST_AMOUNT))
     expect(await token.balanceOfAt(wallet.address, 0)).to.eq(0)
-    expect(await token.balanceOfAt(wallet.address, initialBlock.number)).to.eq(TOTAL_SUPPLY)
-    expect(await token.balanceOfAt(other.address, initialBlock.number)).to.eq(0)
-    expect(await token.balanceOfAt(wallet.address, intermediateBlock.number)).to.eq(TOTAL_SUPPLY.sub(TEST_AMOUNT))
-    expect(await token.balanceOfAt(other.address, intermediateBlock.number)).to.eq(TEST_AMOUNT)
-    expect(await token.balanceOfAt(wallet.address, finalBlock.number)).to.eq(
-      TOTAL_SUPPLY.sub(TEST_AMOUNT).sub(TEST_AMOUNT)
-    )
-    expect(await token.balanceOfAt(other.address, finalBlock.number)).to.eq(TEST_AMOUNT)
-    expect(await token.balanceOfAt('0x1234567890123456789012345678901234567890', finalBlock.number)).to.eq(0)
+    expect(await token.balanceOfAt(wallet.address, initialBlock)).to.eq(TOTAL_SUPPLY)
+    expect(await token.balanceOfAt(other.address, initialBlock)).to.eq(0)
+    expect(await token.balanceOfAt(wallet.address, intermediateBlock)).to.eq(TOTAL_SUPPLY.sub(TEST_AMOUNT))
+    expect(await token.balanceOfAt(other.address, intermediateBlock)).to.eq(TEST_AMOUNT)
+    expect(await token.balanceOfAt(wallet.address, finalBlock)).to.eq(TOTAL_SUPPLY.sub(TEST_AMOUNT).sub(TEST_AMOUNT))
+    expect(await token.balanceOfAt(other.address, finalBlock)).to.eq(TEST_AMOUNT)
+    expect(await token.balanceOfAt('0x1234567890123456789012345678901234567890', finalBlock)).to.eq(0)
   })
 })

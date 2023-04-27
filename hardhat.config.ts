@@ -1,8 +1,5 @@
 import { task } from 'hardhat/config'
-import '@typechain/hardhat'
-import '@nomiclabs/hardhat-ethers'
-import '@nomiclabs/hardhat-etherscan'
-import '@nomiclabs/hardhat-waffle'
+import '@nomicfoundation/hardhat-toolbox'
 
 import 'dotenv/config'
 

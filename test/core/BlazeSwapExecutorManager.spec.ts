@@ -1,18 +1,19 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Contract } from 'ethers'
 
-const { deployContract } = waffle
-
-import BlazeSwapExecutorManager from '../../artifacts/contracts/core/BlazeSwapExecutorManager.sol/BlazeSwapExecutorManager.json'
+import { deployContract } from '../shared/shared/utilities'
 
 describe('BlazeSwapExecutorManager', () => {
-  const provider = waffle.provider
-  const [wallet, executor1, executor2] = provider.getWallets()
+  let wallet: SignerWithAddress
+  let executor1: SignerWithAddress
+  let executor2: SignerWithAddress
 
   let executorManager: Contract
   before('deploy BlazeSwapExecutorManager', async () => {
-    executorManager = await deployContract(wallet, BlazeSwapExecutorManager)
+    [wallet, executor1, executor2] = await hre.ethers.getSigners()
+    executorManager = await deployContract('BlazeSwapExecutorManager')
   })
 
   it('default permission', async () => {

@@ -1,4 +1,6 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
@@ -13,7 +15,6 @@ import {
 import { pairFixture, TEST_PROVIDERS } from './shared/fixtures'
 import {
   IBlazeSwapDelegation__factory,
-  IBlazeSwapFactory,
   IBlazeSwapFlareAssetReward__factory,
   IBlazeSwapFtsoReward__factory,
   IBlazeSwapManager,
@@ -29,18 +30,17 @@ import {
   IERC20__factory,
 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapPairGeneric', () => {
-  const provider = waffle.provider
-  const [wallet, other, feeSplit] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
+  let feeSplit: SignerWithAddress
 
   let manager: IBlazeSwapManager
   let token0: IERC20
   let token1: IERC20
   let pair: IBlazeSwapPair
   beforeEach(async () => {
+    [wallet, other, feeSplit] = await hre.ethers.getSigners()
     const fixture = await loadFixture(pairFixture)
     manager = fixture.manager
     token0 = fixture.token0
@@ -176,13 +176,13 @@ describe('BlazeSwapPairGeneric', () => {
     await addLiquidity(token0Amount, token1Amount)
 
     // ensure that setting price{0,1}CumulativeLast for the first time doesn't affect our gas math
-    await increaseTime(provider, 1) // not really needed by hardhat
+    await increaseTime(1) // not really needed by hardhat
     await pair.sync()
 
     const swapAmount = expandTo18Decimals(1)
     const expectedOutputAmount = BigNumber.from('453305446940074565')
     await token1.transfer(pair.address, swapAmount)
-    await increaseTime(provider, 1) // not really needed by hardhat
+    await increaseTime(1) // not really needed by hardhat
     const tx = await pair.swap(expectedOutputAmount, 0, wallet.address, '0x')
     const receipt = await tx.wait()
     expect(receipt.gasUsed).to.eq(75719)
@@ -223,8 +223,8 @@ describe('BlazeSwapPairGeneric', () => {
     await addLiquidity(token0Amount, token1Amount)
 
     const blockTimestamp = (await pair.getReserves())[2]
-    // await mineBlock(provider, blockTimestamp + 1) // ganache
-    await setNextBlockTime(provider, blockTimestamp + 1) // not really needed by hardhat
+    // await mineBlock(blockTimestamp + 1) // ganache
+    await setNextBlockTime(blockTimestamp + 1) // not really needed by hardhat
     await pair.sync()
 
     const initialPrice = encodePrice(token0Amount, token1Amount)
@@ -234,8 +234,8 @@ describe('BlazeSwapPairGeneric', () => {
 
     const swapAmount = expandTo18Decimals(3)
     await token0.transfer(pair.address, swapAmount)
-    // await mineBlock(provider, blockTimestamp + 10) // ganache
-    await setNextBlockTime(provider, blockTimestamp + 10) // hardhat
+    // await mineBlock(blockTimestamp + 10) // ganache
+    await setNextBlockTime(blockTimestamp + 10) // hardhat
     // swap to a new price eagerly instead of syncing
     await pair.swap(0, expandTo18Decimals(1), wallet.address, '0x') // make the price nice
 
@@ -243,8 +243,8 @@ describe('BlazeSwapPairGeneric', () => {
     expect(await pair.price1CumulativeLast()).to.eq(initialPrice[1].mul(10))
     expect((await pair.getReserves())[2]).to.eq(blockTimestamp + 10)
 
-    // await mineBlock(provider, blockTimestamp + 20) // ganache
-    await setNextBlockTime(provider, blockTimestamp + 20) // hardhat
+    // await mineBlock(blockTimestamp + 20) // ganache
+    await setNextBlockTime(blockTimestamp + 20) // hardhat
     await pair.sync()
 
     const newPrice = encodePrice(expandTo18Decimals(6), expandTo18Decimals(2))

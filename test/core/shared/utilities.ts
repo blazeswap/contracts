@@ -1,9 +1,11 @@
-import { BigNumber, Contract, constants, providers, utils } from 'ethers'
-import { defaultAbiCoder } from '@ethersproject/abi'
+import hre from 'hardhat'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { BigNumber, Contract, constants, utils } from 'ethers'
 import { getAddress } from '@ethersproject/address'
 import { keccak256 } from '@ethersproject/keccak256'
 import { pack as solidityPack } from '@ethersproject/solidity'
 import { toUtf8Bytes } from '@ethersproject/strings'
+import { Signature } from '@ethersproject/bytes'
 
 export const MINIMUM_LIQUIDITY = BigNumber.from(10).pow(3)
 
@@ -13,21 +15,6 @@ const PERMIT_TYPEHASH = keccak256(
 
 export function expandTo18Decimals(n: number): BigNumber {
   return BigNumber.from(n).mul(BigNumber.from(10).pow(18))
-}
-
-function getDomainSeparator(name: string, tokenAddress: string) {
-  return keccak256(
-    defaultAbiCoder.encode(
-      ['bytes32', 'bytes32', 'bytes32', 'uint256', 'address'],
-      [
-        keccak256(toUtf8Bytes('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
-        keccak256(toUtf8Bytes(name)),
-        keccak256(toUtf8Bytes('1')),
-        14,
-        tokenAddress,
-      ]
-    )
-  )
 }
 
 export function getCreate2Address(
@@ -52,7 +39,8 @@ export function getRewardManagerAddress(pairAddress: string): string {
   return getAddress(`0x${keccak256(sanitizedInputs).slice(-40)}`)
 }
 
-export async function getApprovalDigest(
+export async function getApprovalSignature(
+  wallet: SignerWithAddress,
   token: Contract,
   approve: {
     owner: string
@@ -61,25 +49,48 @@ export async function getApprovalDigest(
   },
   nonce: BigNumber,
   deadline: BigNumber
-): Promise<string> {
+): Promise<Signature> {
   const name = await token.name()
-  const DOMAIN_SEPARATOR = getDomainSeparator(name, token.address)
-  return keccak256(
-    solidityPack(
-      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
-      [
-        '0x19',
-        '0x01',
-        DOMAIN_SEPARATOR,
-        keccak256(
-          defaultAbiCoder.encode(
-            ['bytes32', 'address', 'address', 'uint256', 'uint256', 'uint256'],
-            [PERMIT_TYPEHASH, approve.owner, approve.spender, approve.value, nonce, deadline]
-          )
-        ),
-      ]
-    )
+  const signature = await wallet._signTypedData(
+    {
+      name,
+      version: '1',
+      chainId: 14,
+      verifyingContract: token.address,
+    },
+    {
+      Permit: [
+        {
+          name: 'owner',
+          type: 'address',
+        },
+        {
+          name: 'spender',
+          type: 'address',
+        },
+        {
+          name: 'value',
+          type: 'uint256',
+        },
+        {
+          name: 'nonce',
+          type: 'uint256',
+        },
+        {
+          name: 'deadline',
+          type: 'uint256',
+        },
+      ],
+    },
+    {
+      owner: approve.owner,
+      spender: approve.spender,
+      value: approve.value,
+      nonce,
+      deadline,
+    }
   )
+  return utils.splitSignature(signature)
 }
 
 // this doesn't work for extended interfaces
@@ -93,23 +104,27 @@ export function getInterfaceID(contractInterface: utils.Interface) {
   return interfaceID.toHexString()
 }
 
-// ganache 7.x only
-export async function setTime(provider: providers.Web3Provider, timestamp: number): Promise<any> {
-  return provider.send('evm_setTime', [timestamp * 1000])
+export async function getLatestBlockNumber(): Promise<number> {
+  return (await hre.ethers.provider.getBlock('latest')).number
 }
 
-export async function increaseTime(provider: providers.Web3Provider, seconds: number): Promise<any> {
-  return provider.send('evm_increaseTime', [seconds])
+// ganache 7.x only
+export async function setTime(timestamp: number): Promise<any> {
+  return hre.ethers.provider.send('evm_setTime', [timestamp * 1000])
+}
+
+export async function increaseTime(seconds: number): Promise<any> {
+  return hre.ethers.provider.send('evm_increaseTime', [seconds])
 }
 
 // hardhat only
-export async function setNextBlockTime(provider: providers.Web3Provider, timestamp: number): Promise<any> {
-  return provider.send('evm_setNextBlockTimestamp', [timestamp])
+export async function setNextBlockTime(timestamp: number): Promise<any> {
+  return hre.ethers.provider.send('evm_setNextBlockTimestamp', [timestamp])
 }
 
-export async function mineBlock(provider: providers.Web3Provider, timestamp: number): Promise<any> {
+export async function mineBlock(timestamp: number): Promise<any> {
   // await setTime(provider, timestamp) // enable for ganache 7.x
-  return provider.send('evm_mine', [timestamp])
+  return hre.ethers.provider.send('evm_mine', [timestamp])
 }
 
 export function encodePrice(reserve0: BigNumber, reserve1: BigNumber) {

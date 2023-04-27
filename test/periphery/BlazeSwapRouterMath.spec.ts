@@ -1,4 +1,6 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
@@ -6,17 +8,14 @@ import { routerFixture } from './shared/fixtures'
 
 import { IBlazeSwapRouter, IERC20 } from '../../typechain-types'
 
-const { createFixtureLoader } = waffle
-
 describe('BlazeSwapRouter math functions', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let token0: IERC20
   let token1: IERC20
   let router: IBlazeSwapRouter
   beforeEach(async function () {
+    ;[wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
     token0 = fixture.token0
     token1 = fixture.token1

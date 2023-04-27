@@ -1,20 +1,14 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, constants } from 'ethers'
 
-const { deployContract } = waffle
-
-import AddressStringUtilTest from '../../artifacts/contracts/shared/test/AddressStringUtilTest.sol/AddressStringUtilTest.json'
+import { deployContract } from './shared/utilities'
 
 const example = '0xC257274276a4E539741Ca11b590B9447B26A8051'
 
 describe('AddressStringUtil', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let addressStringUtil: Contract
   before('deploy AddressStringUtilTest', async () => {
-    addressStringUtil = await deployContract(wallet, AddressStringUtilTest)
+    addressStringUtil = await deployContract('AddressStringUtilTest')
   })
 
   describe('#toAsciiString', () => {

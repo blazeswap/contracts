@@ -1,19 +1,18 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import { expandTo18Decimals } from '../core/shared/utilities'
 import { routerFixture } from './shared/fixtures'
 
-import ExampleSwapToPriceArtifact from '../../artifacts/contracts/periphery/examples/ExampleSwapToPrice.sol/ExampleSwapToPrice.json'
 import { ExampleSwapToPrice, IBlazeSwapPair, IBlazeSwapRouter, IERC20 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('ExampleSwapToPrice', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet], provider)
+  let wallet: SignerWithAddress
 
   let token0: IERC20
   let token1: IERC20
@@ -21,12 +20,13 @@ describe('ExampleSwapToPrice', () => {
   let swapToPriceExample: ExampleSwapToPrice
   let router: IBlazeSwapRouter
   beforeEach(async function () {
+    [wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(routerFixture)
     token0 = fixture.token0
     token1 = fixture.token1
     pair = fixture.pair
     router = fixture.router
-    swapToPriceExample = (await deployContract(wallet, ExampleSwapToPriceArtifact, [
+    swapToPriceExample = (await deployContract('ExampleSwapToPrice', [
       fixture.factory.address,
       fixture.router.address,
     ])) as ExampleSwapToPrice

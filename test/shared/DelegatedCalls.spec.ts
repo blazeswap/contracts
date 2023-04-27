@@ -1,18 +1,12 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract } from 'ethers'
 
-const { deployContract } = waffle
-
-import DelegatorTest from '../../artifacts/contracts/shared/test/DelegatedCallsTest.sol/DelegatorTest.json'
+import { deployContract } from './shared/utilities'
 
 describe('DelegatedCalls', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let delegator: Contract
   before('deploy Delegator and DelegatedCalls', async () => {
-    delegator = await deployContract(wallet, DelegatorTest)
+    delegator = await deployContract('DelegatorTest')
   })
 
   it('standard call to onlyStandardCall', async () => {

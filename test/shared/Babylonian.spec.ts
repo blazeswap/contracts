@@ -1,18 +1,12 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { Contract, BigNumber, constants } from 'ethers'
 
-import BabylonianTest from '../../artifacts/contracts/shared/test/BabylonianTest.sol/BabylonianTest.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 describe('Babylonian', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let babylonian: Contract
   before('deploy BabylonianTest', async () => {
-    babylonian = await deployContract(wallet, BabylonianTest)
+    babylonian = await deployContract('BabylonianTest')
   })
 
   describe('#sqrt', () => {

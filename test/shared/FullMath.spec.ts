@@ -1,18 +1,12 @@
-import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { Contract, BigNumber, constants } from 'ethers'
+import { Contract, BigNumber } from 'ethers'
 
-import FullMathTest from '../../artifacts/contracts/shared/test/FullMathTest.sol/FullMathTest.json'
-
-const { deployContract } = waffle
+import { deployContract } from './shared/utilities'
 
 describe('FullMath', () => {
-  const provider = waffle.provider
-  const [wallet] = provider.getWallets()
-
   let fm: Contract
   before('deploy FullMathTest', async () => {
-    fm = await deployContract(wallet, FullMathTest)
+    fm = await deployContract('FullMathTest')
   })
 
   describe('#mulDiv', () => {

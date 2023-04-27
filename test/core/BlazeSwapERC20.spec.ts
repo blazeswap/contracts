@@ -1,29 +1,29 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 import { defaultAbiCoder } from '@ethersproject/abi'
 import { keccak256 } from '@ethersproject/keccak256'
 import { hexlify } from '@ethersproject/bytes'
 import { toUtf8Bytes } from '@ethersproject/strings'
-import { ecsign } from 'ethereumjs-util'
 
-import { expandTo18Decimals, getApprovalDigest } from './shared/utilities'
+import { expandTo18Decimals, getApprovalSignature } from './shared/utilities'
 
-import BlazeSwapERC20TestArtifact from '../../artifacts/contracts/core/test/BlazeSwapERC20Test.sol/BlazeSwapERC20Test.json'
 import { BlazeSwapERC20Test } from '../../typechain-types'
 
-const { deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 const TOTAL_SUPPLY = expandTo18Decimals(10000)
 const TEST_AMOUNT = expandTo18Decimals(10)
 
 describe('BlazeSwapERC20', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
+  let wallet: SignerWithAddress
+  let other: SignerWithAddress
 
   let token: BlazeSwapERC20Test
   beforeEach(async () => {
-    token = (await deployContract(wallet, BlazeSwapERC20TestArtifact, [TOTAL_SUPPLY])) as BlazeSwapERC20Test
+    [wallet, other] = await hre.ethers.getSigners()
+    token = (await deployContract('BlazeSwapERC20Test', [TOTAL_SUPPLY])) as BlazeSwapERC20Test
   })
 
   it('name, symbol, decimals, totalSupply, balanceOf, DOMAIN_SEPARATOR, PERMIT_TYPEHASH', async () => {
@@ -97,14 +97,13 @@ describe('BlazeSwapERC20', () => {
   it('permit', async () => {
     const nonce = await token.nonces(wallet.address)
     const deadline = constants.MaxUint256
-    const digest = await getApprovalDigest(
+    const { v, r, s } = await getApprovalSignature(
+      wallet,
       token,
       { owner: wallet.address, spender: other.address, value: TEST_AMOUNT },
       nonce,
       deadline
     )
-
-    const { v, r, s } = ecsign(Buffer.from(digest.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'))
 
     await expect(token.permit(wallet.address, other.address, TEST_AMOUNT, deadline, v, hexlify(r), hexlify(s)))
       .to.emit(token, 'Approval')

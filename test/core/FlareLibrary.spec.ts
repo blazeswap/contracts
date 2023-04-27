@@ -1,12 +1,11 @@
-import { waffle } from 'hardhat'
+import hre from 'hardhat'
+import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
+import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
 import { flareFixture } from './shared/fixtures'
 
-import FlareLibraryTestABI from '../../artifacts/contracts/core/test/FlareLibraryTest.sol/FlareLibraryTest.json'
-import FtsoManagerABI from '../../artifacts/contracts/core/test/FtsoManager.sol/FtsoManager.json'
-import FtsoRewardManagerABI from '../../artifacts/contracts/core/test/FtsoRewardManager.sol/FtsoRewardManager.json'
 import {
   DistributionToDelegators,
   FlareContractRegistry,
@@ -17,21 +16,19 @@ import {
   FtsoRewardManager__factory,
 } from '../../typechain-types'
 
-const { createFixtureLoader, deployContract } = waffle
+import { deployContract } from '../shared/shared/utilities'
 
 describe('FlareLibrary', () => {
-  const provider = waffle.provider
-  const [wallet, other] = provider.getWallets()
-  const loadFixture = createFixtureLoader([wallet, other], provider)
-
+  let wallet: SignerWithAddress
   let registry: FlareContractRegistry
   let distribution: DistributionToDelegators
   let flareLibrary: FlareLibraryTest
   beforeEach(async () => {
+    [wallet] = await hre.ethers.getSigners()
     const fixture = await loadFixture(flareFixture)
     registry = fixture.registry
     distribution = fixture.distribution
-    flareLibrary = (await deployContract(wallet, FlareLibraryTestABI)) as FlareLibraryTest
+    flareLibrary = (await deployContract('FlareLibraryTest')) as FlareLibraryTest
   })
 
   it('getFtsoManager, getFtsoRewardManager, getWNat, getFlareAssetRegistry, getDistribution', async () => {
@@ -48,7 +45,7 @@ describe('FlareLibrary', () => {
     await ftsoManager1.startRewardEpoch(5, 1)
     expect(await flareLibrary.getCurrentFtsoRewardEpoch()).to.eq(5)
 
-    const ftsoManager2 = (await deployContract(wallet, FtsoManagerABI, [ftsoManager1.address])) as FtsoManager
+    const ftsoManager2 = (await deployContract('FtsoManager', [ftsoManager1.address])) as FtsoManager
     await registry.setContractAddress('FtsoManager', ftsoManager2.address, [])
     expect(await flareLibrary.getCurrentFtsoRewardEpoch()).to.eq(5)
     await ftsoManager2.initialize()
@@ -62,7 +59,7 @@ describe('FlareLibrary', () => {
     await ftsoManager1.startRewardEpoch(5, 1)
     expect(await flareLibrary.getCurrentFtsoRewardEpoch()).to.eq(5)
 
-    const ftsoManager2 = (await deployContract(wallet, FtsoManagerABI, [ftsoManager1.address])) as FtsoManager
+    const ftsoManager2 = (await deployContract('FtsoManager', [ftsoManager1.address])) as FtsoManager
     await registry.setContractAddress('FtsoManager', ftsoManager2.address, [])
     expect(await flareLibrary.getCurrentFtsoRewardEpoch()).to.eq(5)
     await ftsoManager2.initialize()
@@ -87,7 +84,7 @@ describe('FlareLibrary', () => {
     expect(end).to.eq(5)
     expect(len).to.eq(3)
 
-    const ftsoManager2 = (await deployContract(wallet, FtsoManagerABI, [ftsoManager1.address])) as FtsoManager
+    const ftsoManager2 = (await deployContract('FtsoManager', [ftsoManager1.address])) as FtsoManager
     await registry.setContractAddress('FtsoManager', ftsoManager2.address, [])
     await ftsoManager2.initialize()
     await ftsoManager2.startRewardEpoch(10, 1)
@@ -100,7 +97,7 @@ describe('FlareLibrary', () => {
 
   async function replaceFtsoRewardManager(ftsoManager: FtsoManager) {
     const oldManager = await ftsoManager.rewardManager()
-    const newManager = (await deployContract(wallet, FtsoRewardManagerABI, [oldManager])) as FtsoRewardManager
+    const newManager = (await deployContract('FtsoRewardManager', [oldManager])) as FtsoRewardManager
     await registry.setContractAddress('FtsoRewardManager', newManager.address, [ftsoManager.address])
     return newManager
   }
