@@ -2,7 +2,7 @@ const { deployContract, getEnvParam, getFlareContractAddress } = require('./util
 
 async function main() {
   const factory = getEnvParam('FACTORY')
-  const wNat = getFlareContractAddress('WNat')
+  const wNat = await getFlareContractAddress('WNat')
   await deployContract('BlazeSwapMigrator', [factory, wNat], true)
 }
 

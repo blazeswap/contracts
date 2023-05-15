@@ -17,7 +17,7 @@ module.exports.deployContract = async function (name, params, periphery = false)
 
   console.log(`${name} deployed at: ${contract.address}`)
 
-  if (process.env['VERIFY_SOURCE_CODE'] == 'true') {
+  if (process.env['VERIFY_SOURCE_CODE'] == 'true') try {
     console.log('Verifying contract')
     const module = periphery ? 'periphery' : 'core'
     await hre.run('verify:verify', {
@@ -25,6 +25,8 @@ module.exports.deployContract = async function (name, params, periphery = false)
       contract: `contracts/${module}/${name}.sol:${name}`,
       constructorArguments: params,
     })
+  } catch (err) {
+    console.log(err)
   }
 
   return contract
