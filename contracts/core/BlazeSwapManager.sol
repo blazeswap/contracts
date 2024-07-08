@@ -138,7 +138,7 @@ contract BlazeSwapManager is IBlazeSwapManager, BlazeSwapBaseManager {
     function addFlareAssetPlugin(BlazeSwapPair p, bytes32 assetType, bool update) private {
         address plugin = flareAssetRewardPlugin[assetType];
         if (plugin != address(0)) {
-            if (IBlazeSwapPlugin(airdropPlugin).active()) p.addPlugin(plugin);
+            if (IBlazeSwapPlugin(plugin).active()) p.addPlugin(plugin);
         } else if (allowFlareAssetPairsWithoutPlugin[assetType] == Allow.YesUpgradable) {
             isFlareAssetPairWithoutPlugin[address(p)] = true;
         } else if (allowFlareAssetPairsWithoutPlugin[assetType] == Allow.No && !update) {
