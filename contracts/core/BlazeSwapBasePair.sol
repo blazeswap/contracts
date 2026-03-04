@@ -190,7 +190,7 @@ contract BlazeSwapBasePair is IBlazeSwapBasePair, BlazeSwapERC20, ReentrancyLock
                 );
                 if (splitFeeRecipient != address(0) && splitFeeBips > 0) {
                     uint256 splitFeeShare = (feeShare * splitFeeBips) / 100_00;
-                    if (feeShare > 0) {
+                    if (splitFeeShare > 0) {
                         uint256 oldFeeShare = pendingFeeShare[splitFeeRecipient];
                         if (oldFeeShare == 0) {
                             pendingFeeAccount.push(splitFeeRecipient);
